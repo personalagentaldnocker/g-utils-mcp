@@ -17,19 +17,32 @@ def revision(raw: bytes) -> str:
 
 
 def attachment_parts(message):
-    return [(str(index), part) for index, part in enumerate(message.walk())
-            if not part.is_multipart() and (part.get_filename() or part.get_content_disposition() == "attachment")]
+    return [
+        (str(index), part)
+        for index, part in enumerate(message.walk())
+        if not part.is_multipart()
+        and (part.get_filename() or part.get_content_disposition() == "attachment")
+    ]
 
 
 def summarize(draft: dict) -> dict:
     raw = decode_raw(draft["message"]["raw"])
     msg = BytesParser(policy=policy.default).parsebytes(raw)
     rev = revision(raw)
-    return {"id": draft["id"], "thread_id": draft["message"].get("threadId"),
-            "revision": rev, "headers": {k: str(msg.get(k, "")) for k in ("To", "Cc", "Subject")},
-            "attachments": [{"attachment_ref": rev + ":" + key,
-                             "filename": part.get_filename(), "mime_type": part.get_content_type()}
-                            for key, part in attachment_parts(msg)]}
+    return {
+        "id": draft["id"],
+        "thread_id": draft["message"].get("threadId"),
+        "revision": rev,
+        "headers": {k: str(msg.get(k, "")) for k in ("To", "Cc", "Subject")},
+        "attachments": [
+            {
+                "attachment_ref": rev + ":" + key,
+                "filename": part.get_filename(),
+                "mime_type": part.get_content_type(),
+            }
+            for key, part in attachment_parts(msg)
+        ],
+    }
 
 
 def compose(params: dict, existing: dict | None, reply: dict | None, files: list[tuple]) -> dict:
@@ -51,7 +64,9 @@ def compose(params: dict, existing: dict | None, reply: dict | None, files: list
             msg["Subject"] = subject if subject.lower().startswith("re:") else "Re: " + subject
             if original.get("Message-ID"):
                 msg["In-Reply-To"] = str(original["Message-ID"])
-                msg["References"] = (str(original.get("References", "")) + " " + str(original["Message-ID"])).strip()
+                msg["References"] = (
+                    str(original.get("References", "")) + " " + str(original["Message-ID"])
+                ).strip()
             if params.get("reply_all"):
                 recipients = getaddresses(original.get_all("To", []) + original.get_all("Cc", []))
                 own = params["own_email"].lower()
@@ -71,8 +86,16 @@ def compose(params: dict, existing: dict | None, reply: dict | None, files: list
         raise AppError("invalid_input", "Draft needs a recipient", 400)
     for key, subtype in (("text", "plain"), ("html", "html")):
         if key in params:
-            body = next((p for p in msg.walk() if not p.is_multipart()
-                         and p.get_content_type() == "text/" + subtype and not p.get_filename()), None)
+            body = next(
+                (
+                    p
+                    for p in msg.walk()
+                    if not p.is_multipart()
+                    and p.get_content_type() == "text/" + subtype
+                    and not p.get_filename()
+                ),
+                None,
+            )
             if body:
                 body.set_content(params[key], subtype=subtype)
             elif not msg.is_multipart() and not msg.get_content_type().startswith("multipart/"):

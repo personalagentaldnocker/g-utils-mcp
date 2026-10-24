@@ -2,8 +2,9 @@ from ..errors import forbidden
 from .models import Grant, Policy, ServiceBinding
 
 
-def authorize(policy: Policy, principal_id: str, context: str, account: str,
-              method: str) -> tuple[Grant, ServiceBinding]:
+def authorize(
+    policy: Policy, principal_id: str, context: str, account: str, method: str
+) -> tuple[Grant, ServiceBinding]:
     principal = policy.principals.get(principal_id)
     target = policy.accounts.get(account)
     ctx = policy.contexts.get(context)

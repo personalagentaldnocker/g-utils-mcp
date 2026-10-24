@@ -16,6 +16,7 @@ def serve(host: str = "0.0.0.0", port: int = 0):
 
     from .app import create_app
     from .config import Settings
+
     settings = Settings()
     uvicorn.run(create_app(settings), host=host, port=port or settings.port, access_log=False)
 
@@ -38,6 +39,7 @@ def base_url() -> str:
 def upload(file: Path, context: str):
     """Upload binary bytes without placing them in the model context."""
     import mimetypes
+
     hdr = headers(context)
     hdr["X-Filename"] = file.name
     hdr["Content-Type"] = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
@@ -53,8 +55,9 @@ def download(file_ref: str, output: Path, context: str):
     """Download to a new file and verify its checksum; never overwrite a user file."""
     limit = 25_000_000
     try:
-        with httpx.stream("GET", base_url() + "/artifacts/" + file_ref,
-                          headers=headers(context), timeout=120) as response:
+        with httpx.stream(
+            "GET", base_url() + "/artifacts/" + file_ref, headers=headers(context), timeout=120
+        ) as response:
             if response.status_code != 200:
                 raise typer.BadParameter(f"Download failed: HTTP {response.status_code}")
             digest = hashlib.sha256()

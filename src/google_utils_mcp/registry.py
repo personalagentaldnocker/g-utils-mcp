@@ -1,4 +1,5 @@
 """An explicit allowlist of wrappers; Discovery describes inputs, never permission."""
+
 import copy
 import json
 from dataclasses import dataclass
@@ -11,12 +12,24 @@ from .errors import AppError
 
 CORE = {
     "gmail": {
-        "users.getProfile", "users.messages.list", "users.messages.get",
-        "users.threads.list", "users.threads.get", "users.threads.modify",
-        "users.messages.modify", "users.messages.attachments.get",
-        "users.labels.list", "users.labels.get", "users.labels.create",
-        "users.labels.update", "users.labels.patch", "users.labels.delete",
-        "users.drafts.list", "users.drafts.get", "users.drafts.create", "users.drafts.update",
+        "users.getProfile",
+        "users.messages.list",
+        "users.messages.get",
+        "users.threads.list",
+        "users.threads.get",
+        "users.threads.modify",
+        "users.messages.modify",
+        "users.messages.attachments.get",
+        "users.labels.list",
+        "users.labels.get",
+        "users.labels.create",
+        "users.labels.update",
+        "users.labels.patch",
+        "users.labels.delete",
+        "users.drafts.list",
+        "users.drafts.get",
+        "users.drafts.create",
+        "users.drafts.update",
     },
     "drive": {"files.list", "files.get", "files.create", "files.update"},
     "docs": {"documents.get", "documents.create", "documents.batchUpdate"},
@@ -25,7 +38,9 @@ VERSIONS = {"gmail": "v1", "drive": "v3", "docs": "v1"}
 
 
 def discovery(api: str) -> dict[str, Any]:
-    return json.loads(files("google_utils_mcp").joinpath(f"discovery/{api}.{VERSIONS[api]}.json").read_text())
+    return json.loads(
+        files("google_utils_mcp").joinpath(f"discovery/{api}.{VERSIONS[api]}.json").read_text()
+    )
 
 
 def catalog(api: str) -> dict[str, dict]:
@@ -36,6 +51,7 @@ def catalog(api: str) -> dict[str, dict]:
             out[method["id"]] = method
         for resource in node.get("resources", {}).values():
             walk(resource)
+
     walk(discovery(api))
     return out
 
@@ -86,6 +102,7 @@ def build_registry() -> dict[str, Method]:
                 required.append("body")
             params["fields"] = {"type": "string", "maxLength": 1000}
             needed: dict[str, dict] = {}
+
             def collect(node, definitions=definitions, needed=needed):
                 if isinstance(node, dict):
                     ref = node.get("$ref", "").removeprefix("#/definitions/")
@@ -97,9 +114,15 @@ def build_registry() -> dict[str, Method]:
                 elif isinstance(node, list):
                     for value in node:
                         collect(value)
+
             collect(params)
-            schema = {"type": "object", "properties": params, "required": required,
-                      "additionalProperties": False, "definitions": needed}
+            schema = {
+                "type": "object",
+                "properties": params,
+                "required": required,
+                "additionalProperties": False,
+                "definitions": needed,
+            }
             name = method_id.replace(".", "_")
             registry[name] = Method(method_id, name, schema)
     return registry

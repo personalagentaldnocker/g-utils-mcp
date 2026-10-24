@@ -19,14 +19,18 @@ class GoogleClients:
         target = policy.accounts[account]
         client = policy.oauth_clients[binding.oauth_client]
         token = json.loads(self.secrets.read(binding.refresh_token_secret_ref))
-        if (token.get("account_alias") != account
-                or token.get("google_subject") != target.google_subject
-                or token.get("oauth_client") != binding.oauth_client
-                or not set(binding.oauth_scopes).issubset(token.get("scopes", []))):
+        if (
+            token.get("account_alias") != account
+            or token.get("google_subject") != target.google_subject
+            or token.get("oauth_client") != binding.oauth_client
+            or not set(binding.oauth_scopes).issubset(token.get("scopes", []))
+        ):
             raise forbidden()
         credentials = Credentials(
-            token=None, refresh_token=token["refresh_token"],
-            token_uri="https://oauth2.googleapis.com/token", client_id=client.client_id,
+            token=None,
+            refresh_token=token["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client.client_id,
             client_secret=self.secrets.read(client.client_secret_ref).decode(),
             scopes=binding.oauth_scopes,
         )

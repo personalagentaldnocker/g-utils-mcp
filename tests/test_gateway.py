@@ -25,6 +25,7 @@ class FakeNode:
                 self.root.calls.append((self.path + (name,), kwargs))
                 return self
             return FakeNode(self.root, self.path + (name,))
+
         return method
 
     def execute(self, **kwargs):
@@ -50,9 +51,13 @@ def test_gateway_authorizes_before_loading_credentials(policy):
     gateway = Gateway(clients, Artifacts(MemoryStore()))
     caller = Caller("agent", policy, 1)
     with pytest.raises(AppError):
-        gateway.call(caller, "gmail_users_labels_delete", "test", "mail", {"userId": "me", "id": "Label_1"})
+        gateway.call(
+            caller, "gmail_users_labels_delete", "test", "mail", {"userId": "me", "id": "Label_1"}
+        )
     assert not clients.accounts
-    result = gateway.call(caller, "gmail_users_messages_list", "test", "mail", {"userId": "me", "maxResults": 10})
+    result = gateway.call(
+        caller, "gmail_users_messages_list", "test", "mail", {"userId": "me", "maxResults": 10}
+    )
     assert result["messages"][0]["id"] == "one"
     assert clients.accounts == [("mail", "gmail")]
     with pytest.raises(AppError):
@@ -60,8 +65,9 @@ def test_gateway_authorizes_before_loading_credentials(policy):
     assert len(clients.accounts) == 1
 
 
-@pytest.mark.parametrize("params", [{"userId": "me", "maxResults": 101},
-                                    {"userId": "me", "access_token": "anything"}])
+@pytest.mark.parametrize(
+    "params", [{"userId": "me", "maxResults": 101}, {"userId": "me", "access_token": "anything"}]
+)
 def test_discovery_validates_bounded_inputs(params):
     with pytest.raises(AppError):
         validate_params(REGISTRY["gmail_users_messages_list"], params)
@@ -75,22 +81,47 @@ def test_drive_and_docs_constraints():
     ]:
         with pytest.raises(AppError):
             constrain(method, params, Grant())
-    constrain("docs.documents.batchUpdate", {"body": {"writeControl": {"requiredRevisionId": "r1"},
-        "requests": [{"insertText": {"text": "x", "location": {"index": 1}}}]}}, Grant())
+    constrain(
+        "docs.documents.batchUpdate",
+        {
+            "body": {
+                "writeControl": {"requiredRevisionId": "r1"},
+                "requests": [{"insertText": {"text": "x", "location": {"index": 1}}}],
+            }
+        },
+        Grant(),
+    )
 
 
 def test_draft_preserves_thread_and_duplicate_attachments():
     msg = EmailMessage()
-    msg["To"], msg["Subject"], msg["In-Reply-To"] = "recipient@example.net", "Re: test", "<original>"
+    msg["To"], msg["Subject"], msg["In-Reply-To"] = (
+        "recipient@example.net",
+        "Re: test",
+        "<original>",
+    )
     msg.set_content("old")
     msg.add_attachment(b"first", maintype="application", subtype="pdf", filename="same.pdf")
     msg.add_attachment(b"second", maintype="application", subtype="pdf", filename="same.pdf")
     raw = msg.as_bytes()
-    draft = {"id": "draft", "message": {"raw": base64.urlsafe_b64encode(raw).decode(), "threadId": "thread"}}
+    draft = {
+        "id": "draft",
+        "message": {"raw": base64.urlsafe_b64encode(raw).decode(), "threadId": "thread"},
+    }
     summary = summarize(draft)
-    updated = compose({"expected_revision": revision(raw), "text": "new",
-                       "remove_attachment_refs": [summary["attachments"][0]["attachment_ref"]]}, draft, None, [])
-    parsed = BytesParser(policy=email_policy.default).parsebytes(decode_raw(updated["message"]["raw"]))
+    updated = compose(
+        {
+            "expected_revision": revision(raw),
+            "text": "new",
+            "remove_attachment_refs": [summary["attachments"][0]["attachment_ref"]],
+        },
+        draft,
+        None,
+        [],
+    )
+    parsed = BytesParser(policy=email_policy.default).parsebytes(
+        decode_raw(updated["message"]["raw"])
+    )
     assert updated["message"]["threadId"] == "thread"
     assert parsed["In-Reply-To"] == "<original>"
     assert [p.get_payload(decode=True) for p in parsed.iter_attachments()] == [b"second"]

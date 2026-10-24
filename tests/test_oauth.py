@@ -25,9 +25,16 @@ class Provider:
 
     def exchange(self, code, transaction):
         self.calls += 1
-        return {"claims": {"nonce": transaction["nonce"], "email_verified": True, "sub": "123",
-                           "email": "wrong@example.net" if self.wrong_email else "test@example.net"},
-                "scopes": transaction["scopes"], "refresh_token": "test-only-not-a-real-token"}
+        return {
+            "claims": {
+                "nonce": transaction["nonce"],
+                "email_verified": True,
+                "sub": "123",
+                "email": "wrong@example.net" if self.wrong_email else "test@example.net",
+            },
+            "scopes": transaction["scopes"],
+            "refresh_token": "test-only-not-a-real-token",
+        }
 
 
 def test_enrollment_cross_instance_replay_and_no_policy_write(policy_dict, secrets):
@@ -39,9 +46,15 @@ def test_enrollment_cross_instance_replay_and_no_policy_write(policy_dict, secre
     instance = Enrollment(Settings(), policy, secrets, temp, provider)
     intent_id = random.token_urlsafe(32)
     binding = policy.current().policy.accounts["mail"].services["gmail"]
-    intent = {"account": "mail", "service": "gmail", "expected_email": "test@example.net",
-              "oauth_client": "web", "target_secret": binding.refresh_token_secret_ref,
-              "scopes": binding.oauth_scopes, "expires": time.time() + 600}
+    intent = {
+        "account": "mail",
+        "service": "gmail",
+        "expected_email": "test@example.net",
+        "oauth_client": "web",
+        "target_secret": binding.refresh_token_secret_ref,
+        "scopes": binding.oauth_scopes,
+        "expires": time.time() + 600,
+    }
     store.put("enrollments/" + intent_id, json.dumps(intent).encode())
     assert instance.handle("/start", {"intent": intent_id}).status_code == 307
     other = Enrollment(Settings(), policy, secrets, temp, provider)
@@ -61,12 +74,14 @@ def test_transaction_consumption_is_atomic():
     store = MemoryStore()
     tx = Transactions(store)
     tx.create("state", {"expires": time.time() + 10})
+
     def consume():
         try:
             tx.consume("state")
             return True
         except AppError:
             return False
+
     with ThreadPoolExecutor(max_workers=2) as pool:
         assert sum(pool.map(lambda _: consume(), range(2))) == 1
 

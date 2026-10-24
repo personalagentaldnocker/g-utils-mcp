@@ -12,10 +12,16 @@ from google_utils_mcp.storage import MemoryStore
 from .conftest import TOKEN
 
 
-@pytest.mark.parametrize("text", [
-    "policy_revision: a\npolicy_revision: b", "a: &x [1]\nb: *x", "a: !python/x hi",
-    "a: {<<: {x: 1}}", "policy_revision: test\nunknown: true",
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "policy_revision: a\npolicy_revision: b",
+        "a: &x [1]\nb: *x",
+        "a: !python/x hi",
+        "a: {<<: {x: 1}}",
+        "policy_revision: test\nunknown: true",
+    ],
+)
 def test_unsafe_yaml_is_rejected(text):
     with pytest.raises(ValueError):
         parse_policy(text.encode())
@@ -32,12 +38,15 @@ def test_deny_wins_and_disabled_account(policy):
         authorize(policy, "agent", "test", "mail", "drive.files.list")
 
 
-@pytest.mark.parametrize("principal,context,account,method", [
-    ("unknown", "test", "mail", "gmail.users.messages.list"),
-    ("agent", "other", "mail", "gmail.users.messages.list"),
-    ("agent", "test", "other", "gmail.users.messages.list"),
-    ("agent", "test", "mail", "gmail.users.messages.send"),
-])
+@pytest.mark.parametrize(
+    "principal,context,account,method",
+    [
+        ("unknown", "test", "mail", "gmail.users.messages.list"),
+        ("agent", "other", "mail", "gmail.users.messages.list"),
+        ("agent", "test", "other", "gmail.users.messages.list"),
+        ("agent", "test", "mail", "gmail.users.messages.send"),
+    ],
+)
 def test_exact_grants(policy, principal, context, account, method):
     with pytest.raises(AppError):
         authorize(policy, principal, context, account, method)

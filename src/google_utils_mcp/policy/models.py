@@ -42,9 +42,19 @@ class Account(StrictModel):
     services: dict[Literal["gmail", "drive"], ServiceBinding]
 
 
-DOCS_REQUESTS = ["insertText", "deleteContentRange", "replaceAllText", "updateTextStyle",
-                 "updateParagraphStyle", "insertTable", "insertTableRow", "insertTableColumn",
-                 "deleteTableRow", "deleteTableColumn", "updateTableCellStyle"]
+DOCS_REQUESTS = [
+    "insertText",
+    "deleteContentRange",
+    "replaceAllText",
+    "updateTextStyle",
+    "updateParagraphStyle",
+    "insertTable",
+    "insertTableRow",
+    "insertTableColumn",
+    "deleteTableRow",
+    "deleteTableColumn",
+    "updateTableCellStyle",
+]
 
 
 class Constraints(StrictModel):
@@ -74,8 +84,13 @@ class Policy(StrictModel):
 
     @model_validator(mode="after")
     def references(self) -> Self:
-        for mapping in (self.owners, self.principals, self.oauth_clients,
-                        self.accounts, self.contexts):
+        for mapping in (
+            self.owners,
+            self.principals,
+            self.oauth_clients,
+            self.accounts,
+            self.contexts,
+        ):
             if any(not re.fullmatch(r"[a-zA-Z0-9_-]{1,80}", key) for key in mapping):
                 raise ValueError("Invalid policy alias")
         refs = []

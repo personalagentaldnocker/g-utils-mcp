@@ -17,5 +17,7 @@ class Transactions:
         data = json.loads(obj.data)
         if data["consumed"] or data["expires"] <= time.time():
             raise AppError("invalid_enrollment", "Enrollment expired or already consumed", 400)
-        self.store.put("oauth/" + state, json.dumps({**data, "consumed": True}).encode(), obj.generation)
+        self.store.put(
+            "oauth/" + state, json.dumps({**data, "consumed": True}).encode(), obj.generation
+        )
         return data

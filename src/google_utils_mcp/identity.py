@@ -10,7 +10,12 @@ def authenticate(policy: Policy, secrets: Secrets, authorization: str) -> str:
     scheme, _, token = authorization.partition(" ")
     alias, _, random_part = token.partition(".")
     principal = policy.principals.get(alias)
-    if scheme.lower() != "bearer" or not principal or not principal.enabled or len(random_part) < 43:
+    if (
+        scheme.lower() != "bearer"
+        or not principal
+        or not principal.enabled
+        or len(random_part) < 43
+    ):
         raise AppError("unauthenticated", "Authentication required", 401)
     digest = hashlib.sha256(token.encode()).hexdigest().encode()
     valid = False
