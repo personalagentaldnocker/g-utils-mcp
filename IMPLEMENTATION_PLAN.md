@@ -1,6 +1,6 @@
 # Google Utils MCP: implementation handoff for Sol
 
-Status: implementation handoff with confirmed feature scope; local administration is a documented default. The current request is planning only: do not implement or deploy until the owner hands this plan to the implementation agent. Prepared 2026-10-24 against `fd8cff4` and its README. This is an implementation specification, not evidence of a deployed or tested service.
+Status: implementation authorized. Core service, Terraform, operator tools and local validation are implemented; real deployment and Google/Claude live acceptance require external configuration. See docs/operations.md for evidence and limits. Local administration remains the default. Prepared 2026-10-24 against `fd8cff4` and its README. This is an implementation specification, not evidence of a deployed or tested service.
 
 ## 1. Task and decisions
 

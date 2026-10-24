@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "Account": {
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "expected_email": {
+          "title": "Expected Email",
+          "type": "string"
+        },
+        "google_subject": {
+          "default": "",
+          "title": "Google Subject",
+          "type": "string"
+        },
+        "services": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ServiceBinding"
+          },
+          "propertyNames": {
+            "enum": [
+              "gmail",
+              "drive"
+            ]
+          },
+          "title": "Services",
+          "type": "object"
+        }
+      },
+      "required": [
+        "owner",
+        "expected_email",
+        "services"
+      ],
+      "title": "Account",
+      "type": "object"
+    },
+    "Constraints": {
+      "additionalProperties": false,
+      "properties": {
+        "forbidden_added_label_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Added Label Ids",
+          "type": "array"
+        },
+        "allowed_docs_requests": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Docs Requests",
+          "type": "array"
+        }
+      },
+      "title": "Constraints",
+      "type": "object"
+    },
+    "Context": {
+      "additionalProperties": false,
+      "properties": {
+        "grants": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Grant"
+            },
+            "type": "object"
+          },
+          "title": "Grants",
+          "type": "object"
+        }
+      },
+      "title": "Context",
+      "type": "object"
+    },
+    "Grant": {
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow",
+          "type": "array"
+        },
+        "deny": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deny",
+          "type": "array"
+        },
+        "constraints": {
+          "$ref": "#/$defs/Constraints"
+        }
+      },
+      "title": "Grant",
+      "type": "object"
+    },
+    "OAuthClient": {
+      "additionalProperties": false,
+      "properties": {
+        "client_id": {
+          "title": "Client Id",
+          "type": "string"
+        },
+        "client_secret_ref": {
+          "title": "Client Secret Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "client_id",
+        "client_secret_ref"
+      ],
+      "title": "OAuthClient",
+      "type": "object"
+    },
+    "Owner": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "display_name"
+      ],
+      "title": "Owner",
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "credential_digest_secret_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Credential Digest Secret Refs",
+          "type": "array"
+        },
+        "allowed_contexts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Contexts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "owner",
+        "credential_digest_secret_refs",
+        "allowed_contexts"
+      ],
+      "title": "Principal",
+      "type": "object"
+    },
+    "ServiceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "oauth_client": {
+          "title": "Oauth Client",
+          "type": "string"
+        },
+        "refresh_token_secret_ref": {
+          "title": "Refresh Token Secret Ref",
+          "type": "string"
+        },
+        "oauth_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Oauth Scopes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "oauth_client",
+        "refresh_token_secret_ref",
+        "oauth_scopes"
+      ],
+      "title": "ServiceBinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "policy_revision": {
+      "title": "Policy Revision",
+      "type": "string"
+    },
+    "default_effect": {
+      "const": "deny",
+      "default": "deny",
+      "title": "Default Effect",
+      "type": "string"
+    },
+    "owners": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Owner"
+      },
+      "title": "Owners",
+      "type": "object"
+    },
+    "principals": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Principal"
+      },
+      "title": "Principals",
+      "type": "object"
+    },
+    "oauth_clients": {
+      "additionalProperties": {
+        "$ref": "#/$defs/OAuthClient"
+      },
+      "title": "Oauth Clients",
+      "type": "object"
+    },
+    "accounts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Account"
+      },
+      "title": "Accounts",
+      "type": "object"
+    },
+    "contexts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Context"
+      },
+      "title": "Contexts",
+      "type": "object"
+    }
+  },
+  "required": [
+    "policy_revision"
+  ],
+  "title": "Policy",
+  "type": "object"
+}
