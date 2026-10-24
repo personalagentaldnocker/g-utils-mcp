@@ -29,6 +29,5 @@ class Settings(BaseSettings):
         return self
 
     def require_cloud(self) -> None:
-        if not all((self.policy_uri, self.temp_bucket, self.public_base_url,
-                    self.allowed_secret_projects)):
-            raise ValueError("Set POLICY_URI, TEMP_BUCKET, PUBLIC_BASE_URL, ALLOWED_SECRET_PROJECTS")
+        if not all((self.policy_uri, self.temp_bucket, self.allowed_secret_projects)):
+            raise ValueError("Set POLICY_URI, TEMP_BUCKET, ALLOWED_SECRET_PROJECTS")

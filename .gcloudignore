@@ -1,0 +1,11 @@
+.git/
+.venv/
+local/
+secrets/
+.env*
+**/.terraform/
+**/*.tfstate*
+**/*.tfvars
+**/tfplan
+tests/
+examples/
