@@ -1,0 +1,17 @@
+{
+  "gmail.v1": {
+    "source": "https://raw.githubusercontent.com/googleapis/discovery-artifact-manager/master/discoveries/gmail.v1.json",
+    "revision": "20261005",
+    "sha256": "f651441dcc942f428d92768e8b20c94a28ff82bf485b79872d9eef267a894225"
+  },
+  "drive.v3": {
+    "source": "https://raw.githubusercontent.com/googleapis/discovery-artifact-manager/master/discoveries/drive.v3.json",
+    "revision": "20261011",
+    "sha256": "28e742d14b7e93a100a4ed2fe87412bfd980a21a77f0b26fbc9f7c267822382a"
+  },
+  "docs.v1": {
+    "source": "https://raw.githubusercontent.com/googleapis/discovery-artifact-manager/master/discoveries/docs.v1.json",
+    "revision": "20261006",
+    "sha256": "e000b828adfac8bd3ca3e14cc4ad999e7d377789c2dadd24021e740450d30147"
+  }
+}
