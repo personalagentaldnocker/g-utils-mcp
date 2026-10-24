@@ -34,7 +34,7 @@ resource "google_cloud_run_v2_service" "runtime" {
   template {
     service_account                  = var.runtime_service_account
     timeout                          = "120s"
-    max_instance_request_concurrency = 8
+    max_instance_request_concurrency = 2
     scaling {
       min_instance_count = 0
       max_instance_count = var.max_instances

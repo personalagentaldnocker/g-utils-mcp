@@ -23,12 +23,14 @@ class FakeNode:
         def method(**kwargs):
             if kwargs:
                 self.root.calls.append((self.path + (name,), kwargs))
-                return self
+                return FakeNode(self.root, self.path + (name,))
             return FakeNode(self.root, self.path + (name,))
 
         return method
 
     def execute(self, **kwargs):
+        if not self.root.calls or self.root.calls[-1][0] != self.path:
+            self.root.calls.append((self.path, {}))
         return self.root.result
 
     def close(self):

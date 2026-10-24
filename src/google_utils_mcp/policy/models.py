@@ -84,6 +84,8 @@ class Policy(StrictModel):
 
     @model_validator(mode="after")
     def references(self) -> Self:
+        from ..registry import IMPLEMENTED
+
         for mapping in (
             self.owners,
             self.principals,
@@ -114,6 +116,8 @@ class Policy(StrictModel):
                 if principal_id not in self.principals:
                     raise ValueError("Unknown grant principal")
                 for account_id, grant in grants.items():
+                    if set(grant.allow) - IMPLEMENTED:
+                        raise ValueError("Unimplemented or unknown method in allow list")
                     if account_id not in self.accounts:
                         raise ValueError("Unknown grant account")
                     if self.principals[principal_id].owner != self.accounts[account_id].owner:

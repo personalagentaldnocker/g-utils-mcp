@@ -28,6 +28,8 @@ class GCSStore:
         blob = self.bucket.blob(key)
         try:
             blob.reload()
+            if blob.size and blob.size > 25_000_000:
+                raise AppError("too_large", "Stored object exceeds size limit", 413)
             generation = int(blob.generation)
             return Object(blob.download_as_bytes(if_generation_match=generation), generation)
         except NotFound:

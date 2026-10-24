@@ -26,6 +26,12 @@ COMPOSE = {
     "remove_attachment_refs": {"type": "array", "maxItems": 100, "items": {"type": "string"}},
 }
 HELPERS: dict[str, tuple[str, dict, list[str], list[str]]] = {
+    "gmail_attachment_download": (
+        "Download a MIME part (inline or external attachment) from a message to an artifact.",
+        {"message_id": {"type": "string"}, "part_id": {"type": "string"}},
+        ["message_id", "part_id"],
+        ["gmail.users.messages.get"],
+    ),
     "gmail_draft_compose": (
         "Create/edit an unsent draft, preserving other MIME parts. Read the draft revision before editing.",
         COMPOSE,

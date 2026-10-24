@@ -15,6 +15,7 @@ class Origin:
     account: str
     method: str
     params: dict
+    required_methods: tuple[str, ...] = ()
 
 
 class Artifacts:
@@ -33,7 +34,7 @@ class Artifacts:
         if len(data) > self.limit:
             raise AppError("too_large", "File exceeds transfer limit", 413)
         filename = PurePath(filename.replace("\\", "/")).name
-        filename = re.sub(r"[^\w. ()-]", "_", filename)[:180] or "file"
+        filename = re.sub(r"[^\w. ()-]", "_", filename, flags=re.ASCII)[:180] or "file"
         if not re.fullmatch(r"[a-zA-Z0-9!#$&^_.+-]+/[a-zA-Z0-9!#$&^_.+-]+", mime_type):
             mime_type = "application/octet-stream"
         ref = secrets.token_urlsafe(32)

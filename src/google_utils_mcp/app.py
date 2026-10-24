@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 import anyio
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
@@ -88,7 +88,7 @@ def create_app(
                 caller.principal,
                 context,
                 bytes(data),
-                request.headers.get("x-filename", "file"),
+                unquote(request.headers.get("x-filename", "file")),
                 request.headers.get("content-type", "application/octet-stream"),
             )
         )

@@ -91,3 +91,62 @@ def test_expired_transaction():
     tx.create("state", {"expires": time.time() - 1})
     with pytest.raises(AppError):
         tx.consume("state")
+
+
+def test_google_authorization_url_has_pkce_nonce_and_exact_callback(policy_dict, secrets):
+    from urllib.parse import parse_qs, urlsplit
+
+    from google_utils_mcp.oauth.routes import GoogleOAuthProvider
+
+    store = MemoryStore()
+    store.put("policy", json.dumps(policy_dict).encode())
+    policies = PolicyStore(store, "policy")
+    ref = policies.current().policy.oauth_clients["web"].client_secret_ref
+    secrets.values[ref] = b"test-client-secret"
+    provider = GoogleOAuthProvider(secrets, policies, "https://service.example.net")
+    url = provider.start(
+        {
+            "oauth_client": "web",
+            "scopes": ["https://www.googleapis.com/auth/gmail.modify"],
+            "state": "state",
+            "nonce": "nonce",
+            "verifier": "x" * 64,
+            "expected_email": "test@example.net",
+        }
+    )
+    query = parse_qs(urlsplit(url).query)
+    assert query["code_challenge_method"] == ["S256"]
+    assert query["nonce"] == ["nonce"]
+    assert query["redirect_uri"] == ["https://service.example.net/oauth/google/callback"]
+
+
+@pytest.mark.parametrize("mismatch", ["email", "nonce", "sub", "email_verified", "scopes"])
+def test_callback_rejects_wrong_identity_and_scopes(policy_dict, secrets, mismatch):
+    store, temp = MemoryStore(), MemoryStore()
+    store.put("policy", json.dumps(policy_dict).encode())
+    policies = PolicyStore(store, "policy")
+    provider = Provider()
+    enrollment = Enrollment(Settings(), policies, secrets, temp, provider)
+    intent_id = random.token_urlsafe(32)
+    binding = policies.current().policy.accounts["mail"].services["gmail"]
+    intent = {
+        "account": "mail",
+        "service": "gmail",
+        "expected_email": "test@example.net",
+        "oauth_client": "web",
+        "target_secret": binding.refresh_token_secret_ref,
+        "scopes": binding.oauth_scopes,
+        "expires": time.time() + 600,
+    }
+    store.put("enrollments/" + intent_id, json.dumps(intent).encode())
+    enrollment.handle("/start", {"intent": intent_id})
+    transaction = provider.transaction
+    result = provider.exchange("code", transaction)
+    if mismatch == "scopes":
+        result["scopes"] = []
+    else:
+        result["claims"][mismatch] = False if mismatch == "email_verified" else "wrong"
+    provider.exchange = lambda code, tx: result
+    with pytest.raises(AppError):
+        enrollment.handle("/callback", {"state": transaction["state"], "code": "code"})
+    assert binding.refresh_token_secret_ref not in secrets.values

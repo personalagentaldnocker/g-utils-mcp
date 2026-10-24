@@ -31,6 +31,7 @@ def summarize(draft: dict) -> dict:
     rev = revision(raw)
     return {
         "id": draft["id"],
+        "message_id": draft["message"].get("id"),
         "thread_id": draft["message"].get("threadId"),
         "revision": rev,
         "headers": {k: str(msg.get(k, "")) for k in ("To", "Cc", "Subject")},

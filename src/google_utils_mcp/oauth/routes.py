@@ -9,6 +9,7 @@ from google_auth_oauthlib.flow import Flow
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from ..errors import AppError
+from .models import EnrollmentIntent
 from .transactions import Transactions
 
 SCOPES_IDENTITY = ["openid", "https://www.googleapis.com/auth/userinfo.email"]
@@ -95,7 +96,9 @@ class Enrollment:
             if not re.fullmatch(r"[A-Za-z0-9_-]{43}", intent_id):
                 raise AppError("invalid_enrollment", "Invalid enrollment", 400)
             # Intent exists only in the administratively writable policy bucket.
-            intent = json.loads(self.policies.objects.read("enrollments/" + intent_id).data)
+            intent = EnrollmentIntent.model_validate_json(
+                self.policies.objects.read("enrollments/" + intent_id).data
+            ).model_dump()
             self.validate_intent(intent)
             state = secrets.token_urlsafe(32)
             ledger_key = "enrollments/" + intent_id
