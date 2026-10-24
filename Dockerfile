@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 RUN uv sync --locked --no-dev --no-editable --compile-bytecode
+RUN chmod -R a+rX /app/.venv
 
 FROM python:3.12.14-slim AS runtime
 RUN useradd --uid 10001 --create-home app
