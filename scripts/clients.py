@@ -10,7 +10,34 @@ from admin_common import cloud, load_policy, protected_write, save_policy
 
 from google_utils_mcp.policy.models import Principal
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
+
+
+@app.command()
+def initialize(
+    policy_file: Annotated[Path, typer.Option()],
+    principal: Annotated[str, typer.Option()],
+    output: Annotated[Path, typer.Option()],
+):
+    """Issue the first credential for a template principal with an empty secret shell."""
+    from google.api_core.exceptions import NotFound
+
+    policy = load_policy(policy_file)
+    target = policy.principals[principal]
+    if len(target.credential_digest_secret_refs) != 1:
+        raise typer.BadParameter("Initialization requires exactly one digest reference")
+    ref = target.credential_digest_secret_refs[0]
+    _, _, secret_store = cloud()
+    try:
+        secret_store.read(ref)
+    except NotFound:
+        pass
+    else:
+        raise typer.BadParameter("Credential already initialized; use rotate")
+    token = principal + "." + secrets.token_urlsafe(32)
+    protected_write(output, token.encode())
+    secret_store.add(ref, hashlib.sha256(token.encode()).hexdigest().encode())
+    typer.echo("Initial credential saved securely; no policy changes were made.")
 
 
 @app.command()

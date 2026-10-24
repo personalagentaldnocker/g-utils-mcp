@@ -12,7 +12,7 @@ from admin_common import cloud, load_policy, report, save_policy
 
 from google_utils_mcp.storage import GCSStore
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
 
 @app.command()
@@ -68,6 +68,13 @@ def activate(intent: Annotated[str, typer.Option()], policy_file: Annotated[Path
         raise typer.BadParameter("Credential binding mismatch")
     policy = load_policy(policy_file)
     account = policy.accounts[enrollment["account"]]
+    binding = account.services[enrollment["service"]]
+    if (
+        binding.oauth_client != enrollment["oauth_client"]
+        or binding.refresh_token_secret_ref != enrollment["target_secret"]
+        or not set(binding.oauth_scopes).issubset(token["scopes"])
+    ):
+        raise typer.BadParameter("Local account binding changed; reconcile before activation")
     if account.expected_email.lower() != completed["email"].lower():
         raise typer.BadParameter("Unexpected email")
     account.google_subject = completed["google_subject"]

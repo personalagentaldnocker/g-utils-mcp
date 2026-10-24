@@ -12,6 +12,8 @@ __pycache__/
 tfplan
 .terraform/
 *.tfvars
+*.tfvars.json
+**/backend.tf
 !*.example.tfvars
 /local/
 /secrets/

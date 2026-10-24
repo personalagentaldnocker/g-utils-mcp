@@ -6,7 +6,7 @@ import shutil
 
 import typer
 
-app = typer.Typer()
+app = typer.Typer(pretty_exceptions_show_locals=False)
 
 
 @app.command()

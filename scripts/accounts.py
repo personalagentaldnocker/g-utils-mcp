@@ -8,7 +8,7 @@ from admin_common import load_policy, report, save_policy
 
 from google_utils_mcp.policy.models import Account, ServiceBinding
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
 
 @app.command()

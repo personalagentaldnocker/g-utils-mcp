@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 from admin_common import cloud, report
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
 
 @app.command()

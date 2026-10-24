@@ -19,7 +19,7 @@ from google_utils_mcp.config import Settings
 from google_utils_mcp.policy.models import parse_policy
 from google_utils_mcp.storage import GCSStore
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
 
 def target():
