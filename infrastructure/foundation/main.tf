@@ -5,7 +5,7 @@ variable "region" {
 }
 variable "name" {
   type    = string
-  default = "google-utils-mcp"
+  default = "workspace-utils-mcp"
 }
 variable "oauth_client_secrets" {
   type    = set(string)
@@ -36,7 +36,7 @@ resource "google_project_service" "required" {
 
 resource "google_service_account" "runtime" {
   account_id   = var.name
-  display_name = "Google utilities MCP runtime (no administrative permissions)"
+  display_name = "Workspace utilities MCP runtime (no administrative permissions)"
   depends_on   = [google_project_service.required]
 }
 
@@ -110,7 +110,7 @@ resource "google_secret_manager_secret_iam_member" "token_writer" {
 }
 
 output "runtime_service_account" { value = google_service_account.runtime.email }
-output "policy_uri" { value = "gs://${google_storage_bucket.policy.name}/policies/google-utils-mcp.yml" }
+output "policy_uri" { value = "gs://${google_storage_bucket.policy.name}/policies/${var.name}.yml" }
 output "temporary_bucket" { value = google_storage_bucket.temporary.name }
 output "image_repository" { value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.runtime.repository_id}/server" }
 output "secret_refs" { value = { for name, secret in google_secret_manager_secret.managed : name => "${secret.id}/versions/latest" } }

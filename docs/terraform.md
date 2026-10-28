@@ -13,6 +13,21 @@ The public invocation setting allows clients that cannot mint GCP IAM ID tokens.
 If organization policy forbids it, resolve the ingress design before deploying.
 No ordinary MCP credential can administer the project.
 
+## Resource names
+
+GCP resource defaults use `workspace-utils-mcp` (Cloud Run service, runtime service
+account ID and Artifact Registry repository). The policy/temporary buckets use
+`PROJECT-workspace-utils-mcp-policy` and `PROJECT-workspace-utils-mcp-temporary`;
+the state bucket uses `PROJECT-workspace-utils-tfstate`. The policy object is
+`policies/workspace-utils-mcp.yml`, derived from foundation's `name` input.
+Keep foundation/service `name` inputs consistent when overriding them. These
+resource names contain no `google`; Terraform provider identifiers, Google API
+hostnames and the Python/CLI package name retain their required/existing names.
+
+Changing names in an existing installation can require resource replacement and
+policy/state migration. Inspect the plan before applying; existing destruction
+protection remains enabled. This refactor does not rename live resources in place.
+
 ## State
 
 Local state is the initial default. Keep it private. For optional remote state:
@@ -77,10 +92,10 @@ Examples, with actual names substituted:
 
 ```bash
 terraform -chdir=infrastructure/foundation import 'google_project_service.required["gmail.googleapis.com"]' "$GCP_PROJECT_ID/gmail.googleapis.com"
-terraform -chdir=infrastructure/foundation import google_service_account.runtime "projects/$GCP_PROJECT_ID/serviceAccounts/google-utils-mcp@$GCP_PROJECT_ID.iam.gserviceaccount.com"
+terraform -chdir=infrastructure/foundation import google_service_account.runtime "projects/$GCP_PROJECT_ID/serviceAccounts/workspace-utils-mcp@$GCP_PROJECT_ID.iam.gserviceaccount.com"
 terraform -chdir=infrastructure/foundation import google_storage_bucket.policy 'ACTUAL_POLICY_BUCKET'
 terraform -chdir=infrastructure/foundation import 'google_secret_manager_secret.managed["oauth-workspace-client-secret"]' "projects/$GCP_PROJECT_ID/secrets/oauth-workspace-client-secret"
-terraform -chdir=infrastructure/service import google_cloud_run_v2_service.runtime "projects/$GCP_PROJECT_ID/locations/$GCP_REGION/services/google-utils-mcp"
+terraform -chdir=infrastructure/service import google_cloud_run_v2_service.runtime "projects/$GCP_PROJECT_ID/locations/$GCP_REGION/services/workspace-utils-mcp"
 ```
 
 Scripts never create secret shells behind Terraform. Add token/digest names to
