@@ -1,4 +1,4 @@
-# Google Utils MCP
+# g-utils
 
 Python HTTP MCP for Gmail, Drive, and Google Docs on Cloud Run.
 
@@ -25,7 +25,7 @@ uv run python scripts/doctor.py --local
 ```
 
 Offline tests inject in-memory adapters; production has no fake authentication mode.
-For the real configured service: `uv run google-utils-mcp serve`.
+For the real configured service: `uv run g-utils serve`.
 
 Follow these guides in order:
 

@@ -2,12 +2,12 @@ import json
 
 import pytest
 
-from google_utils_mcp.errors import AppError
-from google_utils_mcp.identity import authenticate
-from google_utils_mcp.policy.authorize import authorize
-from google_utils_mcp.policy.models import parse_policy
-from google_utils_mcp.policy.store import PolicyStore
-from google_utils_mcp.storage import MemoryStore
+from g_utils.errors import AppError
+from g_utils.identity import authenticate
+from g_utils.policy.authorize import authorize
+from g_utils.policy.models import parse_policy
+from g_utils.policy.store import PolicyStore
+from g_utils.storage import MemoryStore
 
 from .conftest import TOKEN
 

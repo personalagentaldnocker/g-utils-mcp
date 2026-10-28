@@ -15,9 +15,9 @@ from admin_common import (
     validate_capabilities,
 )
 
-from google_utils_mcp.config import Settings
-from google_utils_mcp.policy.models import parse_policy
-from google_utils_mcp.storage import GCSStore
+from g_utils.config import Settings
+from g_utils.policy.models import parse_policy
+from g_utils.storage import GCSStore
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 

@@ -5,7 +5,7 @@ variable "region" {
 }
 variable "name" {
   type    = string
-  default = "workspace-utils-mcp"
+  default = "g-utils"
 }
 variable "runtime_service_account" { type = string }
 variable "image" {

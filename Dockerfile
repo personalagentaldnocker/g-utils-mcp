@@ -14,4 +14,4 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PORT=8080
 USER 10001
 EXPOSE 8080
-CMD ["google-utils-mcp", "serve"]
+CMD ["g-utils", "serve"]

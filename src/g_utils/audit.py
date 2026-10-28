@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 
-logger = logging.getLogger("google_utils_mcp.audit")
+logger = logging.getLogger("g_utils.audit")
 
 
 def event(

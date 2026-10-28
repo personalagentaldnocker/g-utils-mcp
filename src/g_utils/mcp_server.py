@@ -133,7 +133,7 @@ def tools(caller: Caller) -> list[Tool]:
 
 
 def build_server(gateway: Gateway) -> Server:
-    server = Server("google-utils-mcp")
+    server = Server("g-utils")
 
     @server.list_tools()
     async def list_tools():

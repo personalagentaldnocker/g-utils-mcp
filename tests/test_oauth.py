@@ -5,12 +5,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from google_utils_mcp.config import Settings
-from google_utils_mcp.errors import AppError
-from google_utils_mcp.oauth.routes import Enrollment
-from google_utils_mcp.oauth.transactions import Transactions
-from google_utils_mcp.policy.store import PolicyStore
-from google_utils_mcp.storage import MemoryStore
+from g_utils.config import Settings
+from g_utils.errors import AppError
+from g_utils.oauth.routes import Enrollment
+from g_utils.oauth.transactions import Transactions
+from g_utils.policy.store import PolicyStore
+from g_utils.storage import MemoryStore
 
 
 class Provider:
@@ -96,7 +96,7 @@ def test_expired_transaction():
 def test_google_authorization_url_has_pkce_nonce_and_exact_callback(policy_dict, secrets):
     from urllib.parse import parse_qs, urlsplit
 
-    from google_utils_mcp.oauth.routes import GoogleOAuthProvider
+    from g_utils.oauth.routes import GoogleOAuthProvider
 
     store = MemoryStore()
     store.put("policy", json.dumps(policy_dict).encode())

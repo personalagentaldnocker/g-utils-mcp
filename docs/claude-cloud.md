@@ -17,7 +17,7 @@ use the following non-secret MCP configuration (verify with that version's
 ```json
 {
   "mcpServers": {
-    "google-utils": {
+    "g-utils": {
       "type": "http",
       "url": "${MCP_URL}/mcp",
       "headers": {"Authorization": "Bearer ${MCP_TOKEN}"}

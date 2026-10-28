@@ -5,14 +5,14 @@ from email.parser import BytesParser
 
 import pytest
 
-from google_utils_mcp.artifacts import Artifacts
-from google_utils_mcp.errors import AppError
-from google_utils_mcp.gateway import Caller, Gateway
-from google_utils_mcp.policy.constraints import constrain
-from google_utils_mcp.policy.models import Grant
-from google_utils_mcp.registry import REGISTRY, validate_params
-from google_utils_mcp.services.gmail import compose, decode_raw, revision, summarize
-from google_utils_mcp.storage import MemoryStore
+from g_utils.artifacts import Artifacts
+from g_utils.errors import AppError
+from g_utils.gateway import Caller, Gateway
+from g_utils.policy.constraints import constrain
+from g_utils.policy.models import Grant
+from g_utils.registry import REGISTRY, validate_params
+from g_utils.services.gmail import compose, decode_raw, revision, summarize
+from g_utils.storage import MemoryStore
 
 
 class FakeNode:
