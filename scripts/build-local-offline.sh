@@ -17,4 +17,4 @@ text = text.replace(old, "COPY --from=uv-cache / /root/.cache/uv\nRUN uv sync --
 Path(sys.argv[1]).write_text(text)
 PY
 docker build --build-context "uv-cache=${task_uv_cache}" -f "$task_dockerfile" \
-  -t "${LOCAL_IMAGE:-g-utils:local}" .
+  -t "${LOCAL_IMAGE:-g-utils-mcp:local}" .

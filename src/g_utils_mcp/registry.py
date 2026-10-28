@@ -39,7 +39,7 @@ VERSIONS = {"gmail": "v1", "drive": "v3", "docs": "v1"}
 
 def discovery(api: str) -> dict[str, Any]:
     return json.loads(
-        files("g_utils").joinpath(f"discovery/{api}.{VERSIONS[api]}.json").read_text()
+        files("g_utils_mcp").joinpath(f"discovery/{api}.{VERSIONS[api]}.json").read_text()
     )
 
 

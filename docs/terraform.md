@@ -15,15 +15,15 @@ No ordinary MCP credential can administer the project.
 
 ## Resource names
 
-GCP resource defaults use `g-utils` (Cloud Run service, runtime service
+GCP resource defaults use `g-utils-mcp` (Cloud Run service, runtime service
 account ID and Artifact Registry repository). The policy/temporary buckets use
-`PROJECT-g-utils-policy` and `PROJECT-g-utils-temporary`;
-the state bucket uses `PROJECT-g-utils-tfstate`. The policy object is
-`policies/g-utils.yml`, derived from foundation's `name` input.
+`PROJECT-g-utils-mcp-policy` and `PROJECT-g-utils-mcp-temporary`;
+the state bucket uses `PROJECT-g-utils-mcp-tfstate`. The policy object is
+`policies/g-utils-mcp.yml`, derived from foundation's `name` input.
 Keep foundation/service `name` inputs consistent when overriding them. These
 resource names contain no `google`. Terraform provider identifiers and Google API
-hostnames retain their required names. The Python package is `g_utils`; the CLI
-command and project name are `g-utils`.
+hostnames retain their required names. The Python package is `g_utils_mcp`; the CLI
+command and project name are `g-utils-mcp`.
 
 Changing names in an existing installation can require resource replacement and
 policy/state migration. Inspect the plan before applying; existing destruction
@@ -78,8 +78,8 @@ Review both plans; the second apply sets the real URL. Then register its Google
 callback and follow authentication.md. No terraform -target is needed.
 
 ```bash
-docker build -t g-utils:local .
-bash scripts/verify_image.sh g-utils:local
+docker build -t g-utils-mcp:local .
+bash scripts/verify_image.sh g-utils-mcp:local
 ```
 
 If the Docker builder cannot reach registries but host uv can install, use
@@ -93,10 +93,10 @@ Examples, with actual names substituted:
 
 ```bash
 terraform -chdir=infrastructure/foundation import 'google_project_service.required["gmail.googleapis.com"]' "$GCP_PROJECT_ID/gmail.googleapis.com"
-terraform -chdir=infrastructure/foundation import google_service_account.runtime "projects/$GCP_PROJECT_ID/serviceAccounts/g-utils@$GCP_PROJECT_ID.iam.gserviceaccount.com"
+terraform -chdir=infrastructure/foundation import google_service_account.runtime "projects/$GCP_PROJECT_ID/serviceAccounts/g-utils-mcp@$GCP_PROJECT_ID.iam.gserviceaccount.com"
 terraform -chdir=infrastructure/foundation import google_storage_bucket.policy 'ACTUAL_POLICY_BUCKET'
 terraform -chdir=infrastructure/foundation import 'google_secret_manager_secret.managed["oauth-workspace-client-secret"]' "projects/$GCP_PROJECT_ID/secrets/oauth-workspace-client-secret"
-terraform -chdir=infrastructure/service import google_cloud_run_v2_service.runtime "projects/$GCP_PROJECT_ID/locations/$GCP_REGION/services/g-utils"
+terraform -chdir=infrastructure/service import google_cloud_run_v2_service.runtime "projects/$GCP_PROJECT_ID/locations/$GCP_REGION/services/g-utils-mcp"
 ```
 
 Scripts never create secret shells behind Terraform. Add token/digest names to

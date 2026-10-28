@@ -15,8 +15,8 @@ jobs:
       - run: uv run mypy src
       - run: uv run pytest -m 'not live'
       - run: uv run python scripts/generate_api_catalog.py --check
-      - run: docker build -t g-utils:test .
-      - run: bash scripts/verify_image.sh g-utils:test
+      - run: docker build -t g-utils-mcp:test .
+      - run: bash scripts/verify_image.sh g-utils-mcp:test
   terraform:
     runs-on: ubuntu-latest
     steps:

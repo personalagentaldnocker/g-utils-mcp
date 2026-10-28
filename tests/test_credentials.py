@@ -4,12 +4,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from g_utils.credentials.google_oauth import GoogleClients
-from g_utils.errors import AppError
+from g_utils_mcp.credentials.google_oauth import GoogleClients
+from g_utils_mcp.errors import AppError
 
 
 def test_refresh_coordination_binding_isolation_and_rotation(policy, secrets, monkeypatch):
-    from g_utils.credentials import google_oauth
+    from g_utils_mcp.credentials import google_oauth
 
     client_ref = policy.oauth_clients["web"].client_secret_ref
     binding = policy.accounts["mail"].services["gmail"]

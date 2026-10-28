@@ -3,11 +3,11 @@ import os
 
 import pytest
 
-from g_utils.artifacts import Artifacts, Origin
-from g_utils.errors import AppError
-from g_utils.gateway import Caller, Gateway
-from g_utils.registry import REGISTRY
-from g_utils.storage import MemoryStore
+from g_utils_mcp.artifacts import Artifacts, Origin
+from g_utils_mcp.errors import AppError
+from g_utils_mcp.gateway import Caller, Gateway
+from g_utils_mcp.registry import REGISTRY
+from g_utils_mcp.storage import MemoryStore
 
 from .test_gateway import FakeClients
 
@@ -93,7 +93,7 @@ def test_audit_does_not_contain_message_content(policy, caplog):
 
 
 def test_drive_download_resolves_shortcut_in_same_account(policy, monkeypatch):
-    from g_utils.services import drive
+    from g_utils_mcp.services import drive
 
     policy.contexts["test"].grants["agent"]["mail"].allow.append("drive.files.get")
     clients = FakeClients()

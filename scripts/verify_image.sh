@@ -5,18 +5,18 @@ docker run --rm --entrypoint python "$1" -c '
 from pathlib import Path
 import os
 import subprocess
-import g_utils
+import g_utils_mcp
 from starlette.testclient import TestClient
-from g_utils.app import create_app
-from g_utils.config import Settings
-from g_utils.policy.store import PolicyStore
-from g_utils.storage import MemoryStore
-from g_utils.artifacts import Artifacts
+from g_utils_mcp.app import create_app
+from g_utils_mcp.config import Settings
+from g_utils_mcp.policy.store import PolicyStore
+from g_utils_mcp.storage import MemoryStore
+from g_utils_mcp.artifacts import Artifacts
 root = Path("/app")
 assert os.getuid() == 10001
 assert not any((root / p).exists() for p in ("scripts", "infrastructure", ".git", "local", "secrets"))
-assert (Path(g_utils.__file__).parent / "discovery/gmail.v1.json").is_file()
-subprocess.run(["g-utils", "--help"], check=True, stdout=subprocess.DEVNULL)
+assert (Path(g_utils_mcp.__file__).parent / "discovery/gmail.v1.json").is_file()
+subprocess.run(["g-utils-mcp", "--help"], check=True, stdout=subprocess.DEVNULL)
 store = MemoryStore()
 store.put("policy", b"policy_revision: image-smoke")
 app = create_app(Settings(), policies=PolicyStore(store, "policy"), secrets=object(),

@@ -2,11 +2,11 @@ import json
 
 from starlette.testclient import TestClient
 
-from g_utils.app import create_app
-from g_utils.artifacts import Artifacts
-from g_utils.config import Settings
-from g_utils.policy.store import PolicyStore
-from g_utils.storage import MemoryStore
+from g_utils_mcp.app import create_app
+from g_utils_mcp.artifacts import Artifacts
+from g_utils_mcp.config import Settings
+from g_utils_mcp.policy.store import PolicyStore
+from g_utils_mcp.storage import MemoryStore
 
 from .conftest import TOKEN
 from .test_gateway import FakeClients

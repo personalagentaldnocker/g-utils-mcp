@@ -40,7 +40,7 @@ Choose a globally unique ID and link your billing account. Organization policies
 may require --folder or --organization when creating the project.
 
 ```bash
-gcloud projects create "$GCP_PROJECT_ID" --name='g-utils'
+gcloud projects create "$GCP_PROJECT_ID" --name='g-utils-mcp'
 gcloud billing accounts list
 gcloud billing projects link "$GCP_PROJECT_ID" --billing-account='YOUR_BILLING_ACCOUNT_ID'
 gcloud config set project "$GCP_PROJECT_ID"

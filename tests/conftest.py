@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from g_utils.policy.models import Policy
+from g_utils_mcp.policy.models import Policy
 
 TOKEN = "agent." + "x" * 43
 PREFIX = "projects/example/secrets/"

@@ -5,7 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from g_utils.registry import IMPLEMENTED, VERSIONS, catalog, discovery
+from g_utils_mcp.registry import IMPLEMENTED, VERSIONS, catalog, discovery
 
 
 def main():
@@ -23,7 +23,7 @@ def main():
     ]
     manifest = json.loads(Path("discovery/manifest.json").read_text())
     for api, version in VERSIONS.items():
-        data = Path(f"src/g_utils/discovery/{api}.{version}.json").read_bytes()
+        data = Path(f"src/g_utils_mcp/discovery/{api}.{version}.json").read_bytes()
         assert hashlib.sha256(data).hexdigest() == manifest[f"{api}.{version}"]["sha256"]
         assert discovery(api)["revision"] == manifest[f"{api}.{version}"]["revision"]
         for method_id, method in sorted(catalog(api).items()):

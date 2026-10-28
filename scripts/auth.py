@@ -10,7 +10,7 @@ from typing import Annotated
 import typer
 from admin_common import cloud, load_policy, report, save_policy
 
-from g_utils.storage import GCSStore
+from g_utils_mcp.storage import GCSStore
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 

@@ -49,9 +49,9 @@ verified host uv cache when Docker's own package-network access is unavailable.
 Supply MCP_URL as an HTTPS origin and MCP_TOKEN securely in the client environment.
 
 ```bash
-uv run g-utils upload /tmp/input.pdf --context private
+uv run g-utils-mcp upload /tmp/input.pdf --context private
 # Supply the returned file_ref to gmail_draft_compose or drive_upload.
-uv run g-utils download FILE_REF /tmp/new-download.pdf --context private
+uv run g-utils-mcp download FILE_REF /tmp/new-download.pdf --context private
 ```
 
 Downloads never overwrite existing files, validate checksums, and remove partial

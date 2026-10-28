@@ -5,7 +5,7 @@ variable "region" {
 }
 variable "name" {
   type    = string
-  default = "g-utils"
+  default = "g-utils-mcp"
 }
 variable "oauth_client_secrets" {
   type    = set(string)
@@ -36,7 +36,7 @@ resource "google_project_service" "required" {
 
 resource "google_service_account" "runtime" {
   account_id   = var.name
-  display_name = "g-utils runtime (no administrative permissions)"
+  display_name = "g-utils-mcp runtime (no administrative permissions)"
   depends_on   = [google_project_service.required]
 }
 

@@ -8,7 +8,7 @@ from typing import Annotated
 import typer
 from admin_common import cloud, load_policy, protected_write, save_policy
 
-from g_utils.policy.models import Principal
+from g_utils_mcp.policy.models import Principal
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 

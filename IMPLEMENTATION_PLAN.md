@@ -1,4 +1,4 @@
-# g-utils: implementation handoff for Sol
+# g-utils-mcp: implementation handoff for Sol
 
 Status: implementation authorized. Core service, Terraform, operator tools and local validation are implemented; real deployment and Google/Claude live acceptance require external configuration. See docs/operations.md for evidence and limits. Local administration remains the default. Prepared 2026-10-24 against `fd8cff4` and its README. This is an implementation specification, not evidence of a deployed or tested service.
 
@@ -79,7 +79,7 @@ pyproject.toml                  # package metadata, uv dependency groups, CLI en
 uv.lock
 .python-version                # choose/pin a supported version; 3.12 is a starting candidate
 AGENTS.md                      # commands, architecture, credential and permission invariants
-src/g_utils/
+src/g_utils_mcp/
   app.py                       # ASGI app and routes
   mcp_server.py                # registration, discovery, dispatch
   identity.py                  # authenticated principal, no user-supplied impersonation
@@ -131,7 +131,7 @@ uv sync --locked --all-groups
 uv run ruff check .
 uv run mypy src
 uv run pytest -m 'not live'
-uv run g-utils serve --host 127.0.0.1 --port 8080
+uv run g-utils-mcp serve --host 127.0.0.1 --port 8080
 uv run python scripts/doctor.py --local
 ```
 

@@ -5,12 +5,12 @@ from urllib.parse import urlsplit
 
 import yaml
 
-from g_utils.config import Settings
-from g_utils.credentials.secrets import GCPSecrets
-from g_utils.policy.models import parse_policy
-from g_utils.policy.store import PolicyStore
-from g_utils.registry import IMPLEMENTED, VERSIONS, catalog
-from g_utils.storage import GCSStore
+from g_utils_mcp.config import Settings
+from g_utils_mcp.credentials.secrets import GCPSecrets
+from g_utils_mcp.policy.models import parse_policy
+from g_utils_mcp.policy.store import PolicyStore
+from g_utils_mcp.registry import IMPLEMENTED, VERSIONS, catalog
+from g_utils_mcp.storage import GCSStore
 
 
 def protected_write(path: Path, data: bytes, *, replace: bool = False):
@@ -42,7 +42,7 @@ def validate_capabilities(policy):
 
 def save_policy(path: Path, policy):
     # Validate references after each local edit, never publish implicitly.
-    from g_utils.policy.models import Policy
+    from g_utils_mcp.policy.models import Policy
 
     value = Policy.model_validate(policy.model_dump())
     validate_capabilities(value)

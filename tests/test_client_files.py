@@ -3,7 +3,7 @@ import hashlib
 import httpx
 from typer.testing import CliRunner
 
-from g_utils import cli
+from g_utils_mcp import cli
 
 
 def test_file_client_checksum_and_preserves_existing_output(tmp_path, monkeypatch):
