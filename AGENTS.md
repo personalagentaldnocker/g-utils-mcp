@@ -16,3 +16,7 @@ the first-release scope. See IMPLEMENTATION_PLAN.md and docs/ for the contract.
 Live tests require explicit test-account configuration; never substitute real
 production accounts for disposable fixtures. Report live validation as unrun
 when deployment access is absent.
+
+Documentation is top-down: open with the outcome and the concrete action
+(file name and location, exact command, required variables). Background,
+caveats and what is out of scope come after, briefly.

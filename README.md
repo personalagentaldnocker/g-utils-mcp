@@ -36,7 +36,7 @@ Follow these guides in order:
 3. [Initial Google authentication and agent credentials](docs/authentication.md)
 4. [GCS permissions file](docs/policy.md)
 5. [Operator commands](docs/cli.md)
-6. [Claude Code cloud and acceptance checks](docs/claude-cloud.md)
+6. [Use as an MCP server in Claude Code (.mcp.json), acceptance checks](docs/claude-cloud.md)
 7. [Operations, limits and validation status](docs/operations.md)
 
 Start with [deny-all](examples/policy.deny-all.yml). The [feature template](examples/policy.example.yml)

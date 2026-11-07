@@ -1,49 +1,44 @@
-# Claude Code on the web / cloud sessions
+# Use as an MCP server in Claude Code
 
-This release uses an explicitly configured Authorization bearer header for MCP;
-it does not implement an OAuth authorization server for MCP clients. Google account
-consent is a separate browser flow. Actual hosted-client header/network support
-must be verified in the target cloud session; a desktop or Python client isn't proof.
+1. `.mcp.json` in the repository root registers the server (already committed):
 
-Store MCP_TOKEN securely in that session's environment. MCP_URL is the deployed
-HTTPS origin. Allow that exact host through the session's network configuration.
-If using a proxy-backed network secret, bind it to that hostname and use the
-supported HTTPS route. It may be a placeholder rather than a raw local credential.
+   ```json
+   {
+     "mcpServers": {
+       "g-utils-mcp": {
+         "type": "http",
+         "url": "${MCP_URL}/mcp",
+         "headers": {"Authorization": "Bearer ${MCP_TOKEN}"}
+       }
+     }
+   }
+   ```
 
-For a Claude Code version that supports HTTP servers and environment expansion,
-use the following non-secret MCP configuration (verify with that version's
-`claude mcp --help` and https://code.claude.com/docs/en/mcp):
+2. Make `MCP_URL` and `MCP_TOKEN` available where Claude Code runs:
+   - **Cloud session:** add both as environment variables in the cloud
+     environment's settings, and allow the Cloud Run host in its network settings.
+   - **Local:** export both in the shell that starts `claude`.
 
-```json
-{
-  "mcpServers": {
-    "g-utils-mcp": {
-      "type": "http",
-      "url": "${MCP_URL}/mcp",
-      "headers": {"Authorization": "Bearer ${MCP_TOKEN}"}
-    }
-  }
-}
-```
+   `MCP_URL` is the service URL (no trailing slash). `MCP_TOKEN` is the contents
+   of `local/mcp-token` from `clients.py initialize` (authentication.md). Never
+   put the token value in `.mcp.json` or Git.
 
-Keep actual credential values out of .mcp.json and Git. Use the client's supported
-user/project configuration location, restart/reconnect, and inspect its MCP status.
-If the hosted environment does not load that configuration or inject headers,
-record that as a blocker. Do not replace authentication with public access. A
-supported identity provider/MCP OAuth adapter can be added as a separate mode if
-needed after the hosted-client capability is established.
+3. Start a new session and run `/mcp`; `g-utils-mcp` should be connected.
 
-First run a read-only check from the same cloud session:
+Prerequisite: deployment with `PUBLIC_BASE_URL`, activated accounts and the
+agent token (authentication.md).
+
+To check the connection outside Claude:
 
 ```bash
-uv sync --locked --all-groups
 uv run python scripts/smoke.py
 ```
 
-This checks the official SDK's client, not Claude itself. Then invoke
-workspace_capabilities through Claude and confirm account aliases and tools.
-Every Google tool takes account, context and params; these select among grants,
-never authenticate the caller.
+## Calling the tools
+
+Call `workspace_capabilities` first to list account aliases and tools. Every
+Google tool takes `account`, `context` and `params`; these select among grants,
+they do not authenticate the caller.
 
 Example Gmail search arguments for gmail_users_messages_list:
 
