@@ -74,7 +74,8 @@ uv run python scripts/gcs_policy.py publish --file examples/policy.deny-all.yml 
 --create is generation-zero only. For an existing policy, pull and publish against
 its recorded generation. Terraform enables Run, Registry, Secret Manager, Storage,
 IAM, Gmail, Drive and Docs APIs without disabling retained APIs on destroy. The
-local Docker build path needs no Cloud Build API or build identity.
+local Docker build path needs no Cloud Build API or build identity; the optional
+Cloud Build path (BUILDER=cloudbuild, see terraform.md) does.
 
 Follow terraform.md to build/deploy and obtain PUBLIC_BASE_URL. First deployment
 can leave it empty: health starts but enrollment/remote MCP aren't ready until the

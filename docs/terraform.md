@@ -72,6 +72,23 @@ uv run python scripts/configure_service.py --image "$IMAGE_DIGEST" --public-base
 bash scripts/deploy.sh
 ```
 
+### Building with Cloud Build (no local Docker)
+
+`BUILDER=cloudbuild bash scripts/build.sh` builds remotely and pushes to the same
+Artifact Registry repository. One-time setup: enable the API and let the build
+service account (Compute default SA on newer projects) push to the repository.
+
+```bash
+gcloud services enable cloudbuild.googleapis.com --project "$GCP_PROJECT_ID"
+export BUILD_SA="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
+gcloud artifacts repositories add-iam-policy-binding g-utils-mcp --location "$GCP_REGION" --project "$GCP_PROJECT_ID" --member "serviceAccount:$BUILD_SA" --role roles/artifactregistry.writer
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" --member "serviceAccount:$BUILD_SA" --role roles/logging.logWriter
+```
+
+Deploy still goes through Terraform with the printed digest. Avoid
+`gcloud run deploy --source`: it bypasses the digest-pinned service config and
+drifts from Terraform state.
+
 configure_service.py reads foundation outputs and writes ignored non-secret service
 terraform.tfvars.json. Use it OR your own service tfvars, not conflicting files.
 Review both plans; the second apply sets the real URL. Then register its Google
