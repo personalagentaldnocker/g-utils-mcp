@@ -9,3 +9,5 @@ secrets/
 **/tfplan
 tests/
 examples/
+scripts/
+infrastructure/

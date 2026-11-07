@@ -6,7 +6,7 @@ import os
 
 import typer
 from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
 
 
 async def run():
@@ -14,19 +14,22 @@ async def run():
     if not url.startswith("https://"):
         raise ValueError("MCP_URL must be HTTPS")
     headers = {"Authorization": "Bearer " + os.environ["MCP_TOKEN"]}
-    async with streamable_http_client(url + "/mcp", headers=headers) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-            result = await session.call_tool("workspace_capabilities", {})
-            if result.isError:
-                raise ValueError("Capability check failed")
-            print(
-                json.dumps(
-                    {"tool_count": len(tools.tools), "capabilities": result.structuredContent},
-                    indent=2,
-                )
+    async with (
+        create_mcp_http_client(headers=headers) as http_client,
+        streamable_http_client(url + "/mcp", http_client=http_client) as (read, write, _),
+        ClientSession(read, write) as session,
+    ):
+        await session.initialize()
+        tools = await session.list_tools()
+        result = await session.call_tool("workspace_capabilities", {})
+        if result.isError:
+            raise ValueError("Capability check failed")
+        print(
+            json.dumps(
+                {"tool_count": len(tools.tools), "capabilities": result.structuredContent},
+                indent=2,
             )
+        )
 
 
 def main():

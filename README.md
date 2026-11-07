@@ -1,45 +1,105 @@
 # g-utils-mcp
 
-Python HTTP MCP for Gmail, Drive, and Google Docs on Cloud Run.
+An MCP server on Cloud Run that gives an agent (e.g. Claude Code) access to Gmail and
+Drive/Docs, limited by a policy file you control. No sending mail, no deleting.
 
-**Authenticate agent → read current GCS policy → authorize context/account/method
-and arguments → load that account's OAuth binding from Secret Manager using the
-Cloud Run service account → execute the Google wrapper.** Runtime cannot edit policy.
+## Use it from Claude Code
 
-Multiple Google accounts and multiple agent principals can have different grants.
-Gmail supports search/read, user labels, thread labels, reply drafts, and attachment
-add/remove/download. Drive supports account-wide file search/read/upload/download/
-update/export; Docs supports content edits with revision checks. Binary files move
-through authenticated artifacts, without Base64 through the model context.
+`.mcp.json` in the repository root registers the server. Make two variables available
+where Claude Code runs:
 
-Mail sending/deletion, Drive sharing/deletion, Calendar, Sheets/Slides editing,
-folder restrictions, and specialist/admin API methods are deferred. See the
-[complete API coverage](docs/api-coverage.md) for every exposed/deferred method.
+- `MCP_URL`: the service URL printed by `scripts/deploy.sh` (no trailing slash).
+- `MCP_TOKEN`: the content of `local/mcp-token` (see step 6).
+
+In a cloud session, set both in the environment's settings and allow the Cloud Run host
+in its network settings. Locally, export both in the shell that starts `claude`. Start a
+new session; `/mcp` should show `g-utils-mcp`.
+
+## Set up
+
+Needs: gcloud (logged in, project selected), `gcloud auth application-default login`,
+uv, Terraform (version in `.terraform-version`). Run everything from the repository root.
+
+1. **Settings.** `cp .env.example .env`, set `GCP_PROJECT_ID` and `GCP_REGION`, then
+   `set -a; source .env; set +a`. Run `uv sync --locked --all-groups`.
+2. **Infrastructure.**
+   ```bash
+   cp infrastructure/foundation/terraform.example.tfvars infrastructure/foundation/terraform.tfvars
+   terraform -chdir=infrastructure/foundation init
+   terraform -chdir=infrastructure/foundation apply
+   ```
+   This creates the APIs, the runtime service account, the image registry, the policy
+   bucket and the single secret (empty).
+3. **OAuth client (Cloud Console, manual).** Google Auth Platform → Branding and
+   Audience: set the app to **In production** (in Testing, sign-ins expire after 7 days;
+   for personal use you click past the "unverified app" warning once). Clients → Create
+   → **Desktop app** → download the JSON to `local/client_secret.json`, then:
+   ```bash
+   uv run python scripts/admin.py client --file local/client_secret.json
+   ```
+4. **Policy.** `cp examples/policy.example.yml local/policy.yml`, set the
+   `expected_email` of each account and remove accounts you don't use, then:
+   ```bash
+   uv run python scripts/admin.py policy-push --file local/policy.yml
+   ```
+5. **Sign in each account.** A browser opens; sign in as the account's `expected_email`.
+   A different account is refused.
+   ```bash
+   uv run python scripts/admin.py login --account mailbox
+   ```
+   Then set `enabled: true` for that account in `local/policy.yml` and push again.
+6. **Agent token.** Written to a private file, never printed:
+   ```bash
+   uv run python scripts/admin.py token --principal claude-cloud --output local/mcp-token
+   ```
+7. **Build and deploy.** `deploy.sh` shows the Terraform plan and asks before applying.
+   ```bash
+   bash scripts/build.sh
+   ```
+   ```bash
+   cp infrastructure/service/terraform.example.tfvars infrastructure/service/terraform.tfvars
+   ```
+   Fill it in from `terraform -chdir=infrastructure/foundation output`, then:
+   ```bash
+   bash scripts/deploy.sh
+   ```
+8. **Check.** With `MCP_URL` and `MCP_TOKEN` set: `uv run python scripts/smoke.py`.
+
+## Change permissions
 
 ```bash
-uv sync --locked --all-groups
-uv run ruff check .
-uv run mypy src
-uv run pytest -m 'not live'
-uv run python scripts/doctor.py --local
+uv run python scripts/admin.py policy-pull --file local/policy.yml
+```
+Edit, then `policy-push`. The push fails if someone changed the policy since your pull.
+The server checks the policy on every request, so changes apply immediately.
+
+## Policy format
+
+`principals` are agents (one token each), `accounts` are Google accounts with the
+services they're signed in for, and `contexts.<name>.grants.<principal>.<account>` lists
+the allowed and denied Google methods. Deny wins; anything not allowed is denied. See
+`examples/policy.example.yml`. Tool names are method names with `_`, e.g.
+`gmail.users.messages.list` → `gmail_users_messages_list`.
+
+Every tool call passes `context`, `account` and `params` (the Google method's
+parameters). Start with `workspace_capabilities`. Files (attachments, Drive uploads and
+downloads) travel as base64 in the call, up to 5 MB each.
+
+## Tear down
+
+```bash
+terraform -chdir=infrastructure/service destroy
+terraform -chdir=infrastructure/foundation destroy
+```
+This deletes the service, the secret and the policy bucket. Enabled APIs stay on.
+
+## Development
+
+```bash
+uv run ruff check . && uv run mypy src && uv run pytest
 ```
 
-Offline tests inject in-memory adapters; production has no fake authentication mode.
-For the real configured service: `uv run g-utils-mcp serve`.
-
-Copy [.env.example](.env.example) to `.env` for the operator variables used below.
-
-Follow these guides in order:
-
-1. [GCP setup, existing/fresh project](docs/setup-gcp.md)
-2. [Terraform, imports, build and deployment](docs/terraform.md)
-3. [Initial Google authentication and agent credentials](docs/authentication.md)
-4. [GCS permissions file](docs/policy.md)
-5. [Operator commands](docs/cli.md)
-6. [Claude Code cloud and acceptance checks](docs/claude-cloud.md)
-7. [Operations, limits and validation status](docs/operations.md)
-
-Start with [deny-all](examples/policy.deny-all.yml). The [feature template](examples/policy.example.yml)
-uses fake identifiers and disabled accounts. Replace them locally, enroll, then
-activate. Keep production policies/credentials in ignored `local/` or secure stores.
-The [implementation plan](IMPLEMENTATION_PLAN.md) records the agreed scope.
+Layout: `src/g_utils_mcp/app.py` (HTTP + `/mcp`), `mcp_server.py` (tools),
+`services/gmail.py`, `services/drive.py`, `utils/auth.py` (token, policy, Google
+credentials), `utils/helpers.py` (Cloud Storage, Secret Manager, Google API calls).
+Operator commands are in `scripts/admin.py` and are not part of the image.

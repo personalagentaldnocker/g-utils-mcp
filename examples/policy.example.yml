@@ -1,44 +1,24 @@
+# Example policy. Replace the emails, sign each account in with
+# `scripts/admin.py login`, then set enabled: true and push.
 schema_version: 1
-policy_revision: initial-reviewed-001
+policy_revision: initial-001
 default_effect: deny
-owners:
-  owner:
-    display_name: Example owner
 principals:
   claude-cloud:
-    owner: owner
     enabled: true
-    credential_digest_secret_refs:
-    - projects/your-project-id/secrets/mcp-agent-digest/versions/latest
     allowed_contexts:
     - private
-oauth_clients:
-  workspace:
-    client_id: REPLACE.apps.googleusercontent.com
-    client_secret_ref: projects/your-project-id/secrets/oauth-workspace-client-secret/versions/latest
 accounts:
   mailbox:
-    owner: owner
     enabled: false
     expected_email: mailbox@example.net
-    google_subject: ''
     services:
-      gmail:
-        oauth_client: workspace
-        refresh_token_secret_ref: projects/your-project-id/secrets/gmail-main-refresh/versions/latest
-        oauth_scopes:
-        - https://www.googleapis.com/auth/gmail.modify
+    - gmail
   drive-agent:
-    owner: owner
     enabled: false
     expected_email: dedicated@example.net
-    google_subject: ''
     services:
-      drive:
-        oauth_client: workspace
-        refresh_token_secret_ref: projects/your-project-id/secrets/drive-main-refresh/versions/latest
-        oauth_scopes:
-        - https://www.googleapis.com/auth/drive
+    - drive
 contexts:
   private:
     grants:

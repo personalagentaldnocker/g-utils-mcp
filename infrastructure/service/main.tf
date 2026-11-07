@@ -16,11 +16,7 @@ variable "image" {
   }
 }
 variable "policy_uri" { type = string }
-variable "temporary_bucket" { type = string }
-variable "public_base_url" {
-  type    = string
-  default = ""
-}
+variable "secret_name" { type = string }
 variable "max_instances" {
   type    = number
   default = 3
@@ -30,7 +26,7 @@ resource "google_cloud_run_v2_service" "runtime" {
   name                = var.name
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
-  deletion_protection = true
+  deletion_protection = false # teardown is `terraform destroy`
   scaling {
     min_instance_count = 0
     max_instance_count = var.max_instances
@@ -50,24 +46,12 @@ resource "google_cloud_run_v2_service" "runtime" {
         limits = { cpu = "1", memory = "512Mi" }
       }
       env {
-        name  = "GOOGLE_CLOUD_PROJECT"
-        value = var.project_id
-      }
-      env {
         name  = "POLICY_URI"
         value = var.policy_uri
       }
       env {
-        name  = "TEMP_BUCKET"
-        value = var.temporary_bucket
-      }
-      env {
-        name  = "PUBLIC_BASE_URL"
-        value = var.public_base_url
-      }
-      env {
-        name  = "ALLOWED_SECRET_PROJECTS"
-        value = jsonencode([var.project_id])
+        name  = "SECRET_NAME"
+        value = var.secret_name
       }
       startup_probe {
         http_get { path = "/health" }

@@ -1,8 +1,6 @@
 schema_version: 1
 policy_revision: initial-deny-all
 default_effect: deny
-owners: {}
 principals: {}
-oauth_clients: {}
 accounts: {}
 contexts: {}

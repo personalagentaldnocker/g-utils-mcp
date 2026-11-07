@@ -1,60 +1,45 @@
-import hashlib
-
 import pytest
 
-from g_utils_mcp.policy.models import Policy
+from g_utils_mcp.mcp_server import Caller
+from g_utils_mcp.utils.auth import Policy
 
-TOKEN = "agent." + "x" * 43
-PREFIX = "projects/example/secrets/"
+TOKEN = "t" * 43
 
 
-class FakeSecrets:
-    def __init__(self):
-        self.values = {
-            PREFIX + "agent/versions/latest": hashlib.sha256(TOKEN.encode()).hexdigest().encode()
-        }
-        self.reads: list[str] = []
+class Call:
+    """Fake Google request: attribute access builds the method path, execute() answers it."""
 
-    def read(self, ref):
-        self.reads.append(ref)
-        return self.values[ref]
+    def __init__(self, client, path, kwargs=None):
+        self.client, self.path, self.kwargs = client, path, kwargs or {}
 
-    def add(self, ref, payload):
-        self.values[ref] = payload
+    def __getattr__(self, name):
+        return lambda **kwargs: Call(self.client, self.path + [name], kwargs)
+
+    def execute(self, num_retries=0):
+        method_id = ".".join(self.path)
+        self.client.calls.append((method_id, self.kwargs))
+        answer = self.client.answers[method_id]
+        return answer(self.kwargs) if callable(answer) else answer
+
+
+class FakeClient:
+    def __init__(self, answers):
+        self.answers, self.calls = answers, []
+
+    def factory(self, api):
+        return Call(self, [api])
 
 
 @pytest.fixture
 def policy_dict():
     return {
         "policy_revision": "test",
-        "owners": {"owner": {"display_name": "Test"}},
-        "principals": {
-            "agent": {
-                "owner": "owner",
-                "credential_digest_secret_refs": [PREFIX + "agent/versions/latest"],
-                "allowed_contexts": ["test"],
-            }
-        },
-        "oauth_clients": {
-            "web": {
-                "client_id": "test.apps.googleusercontent.com",
-                "client_secret_ref": PREFIX + "client/versions/latest",
-            }
-        },
+        "principals": {"agent": {"allowed_contexts": ["test"]}},
         "accounts": {
             "mail": {
-                "owner": "owner",
                 "enabled": True,
-                "expected_email": "test@example.net",
-                "google_subject": "123",
-                "services": {
-                    name: {
-                        "oauth_client": "web",
-                        "refresh_token_secret_ref": PREFIX + name + "/versions/latest",
-                        "oauth_scopes": ["https://www.googleapis.com/auth/" + scope],
-                    }
-                    for name, scope in [("gmail", "gmail.modify"), ("drive", "drive")]
-                },
+                "expected_email": "me@example.net",
+                "services": ["gmail", "drive"],
             }
         },
         "contexts": {
@@ -64,9 +49,15 @@ def policy_dict():
                         "mail": {
                             "allow": [
                                 "gmail.users.messages.list",
-                                "drive.files.list",
-                                "docs.documents.get",
+                                "gmail.users.messages.get",
+                                "gmail.users.messages.modify",
+                                "gmail.users.messages.attachments.get",
+                                "gmail.users.drafts.create",
+                                "drive.files.get",
+                                "drive.files.export",
+                                "docs.documents.batchUpdate",
                             ],
+                            "deny": ["gmail.users.messages.modify"],
                         }
                     }
                 }
@@ -81,5 +72,14 @@ def policy(policy_dict):
 
 
 @pytest.fixture
-def secrets():
-    return FakeSecrets()
+def secret():
+    return {
+        "oauth_client": {"client_id": "id", "client_secret": "s"},
+        "principals": {"agent": {"token": TOKEN}},
+        "accounts": {},
+    }
+
+
+@pytest.fixture
+def who(policy, secret):
+    return Caller("agent", policy, secret)

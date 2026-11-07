@@ -3,7 +3,7 @@ variables {
   project_id              = "unit-test-project"
   runtime_service_account = "runtime@unit-test-project.iam.gserviceaccount.com"
   policy_uri              = "gs://unit-policy/policy.yml"
-  temporary_bucket        = "unit-temp"
+  secret_name             = "projects/unit-test-project/secrets/g-utils-mcp"
   image                   = "europe-west3-docker.pkg.dev/unit-test-project/mcp/server@sha256:0000000000000000000000000000000000000000000000000000000000000000"
 }
 run "public_transport_private_application" {

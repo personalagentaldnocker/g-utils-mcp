@@ -1,33 +1,28 @@
-from typing import Self
-from urllib.parse import urlsplit
+"""Settings: two environment variables, everything else is a constant."""
 
-from pydantic import Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+
+MAX_FILE_BYTES = 5_000_000  # files travel through the conversation as base64
+MAX_RESULT_BYTES = 8_000_000  # fits one base64-encoded file plus metadata
+SECRET_CACHE_SECONDS = 300  # revocation goes through the policy, which is checked every request
+SCOPES = {
+    "gmail": ["https://www.googleapis.com/auth/gmail.modify"],
+    "drive": ["https://www.googleapis.com/auth/drive"],  # also covers the Docs methods
+}
+IDENTITY_SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email"]
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
-    google_cloud_project: str = ""
-    policy_uri: str = ""
-    temp_bucket: str = ""
-    public_base_url: str = ""
-    allowed_secret_projects: list[str] = Field(default_factory=list)
-    port: int = 8080
-    max_transfer_bytes: int = Field(default=20_000_000, ge=1, le=25_000_000)
-    max_result_bytes: int = Field(default=1_000_000, ge=1024, le=5_000_000)
-    artifact_ttl_seconds: int = Field(default=1800, ge=60, le=3600)
+def policy_uri() -> str:
+    """gs://bucket/object of the policy file."""
+    value = os.environ.get("POLICY_URI", "")
+    if not value.startswith("gs://"):
+        raise RuntimeError("Set POLICY_URI=gs://bucket/object")
+    return value
 
-    @model_validator(mode="after")
-    def check_urls(self) -> Self:
-        if self.policy_uri and not self.policy_uri.startswith("gs://"):
-            raise ValueError("POLICY_URI must be gs://bucket/object")
-        if self.public_base_url:
-            url = urlsplit(self.public_base_url)
-            if url.scheme != "https" or not url.hostname or url.path not in ("", "/"):
-                raise ValueError("PUBLIC_BASE_URL must be an HTTPS origin")
-            self.public_base_url = self.public_base_url.rstrip("/")
-        return self
 
-    def require_cloud(self) -> None:
-        if not all((self.policy_uri, self.temp_bucket, self.allowed_secret_projects)):
-            raise ValueError("Set POLICY_URI, TEMP_BUCKET, ALLOWED_SECRET_PROJECTS")
+def secret_name() -> str:
+    """projects/PROJECT/secrets/NAME of the single secret."""
+    value = os.environ.get("SECRET_NAME", "")
+    if not value.startswith("projects/") or "/secrets/" not in value:
+        raise RuntimeError("Set SECRET_NAME=projects/PROJECT/secrets/NAME")
+    return value
