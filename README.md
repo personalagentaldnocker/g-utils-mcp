@@ -27,6 +27,8 @@ uv run python scripts/doctor.py --local
 Offline tests inject in-memory adapters; production has no fake authentication mode.
 For the real configured service: `uv run g-utils-mcp serve`.
 
+Copy [.env.example](.env.example) to `.env` for the operator variables used below.
+
 Follow these guides in order:
 
 1. [GCP setup, existing/fresh project](docs/setup-gcp.md)
