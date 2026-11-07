@@ -3,9 +3,7 @@
     "g-utils-mcp": {
       "type": "http",
       "url": "${MCP_URL}/mcp",
-      "headers": {
-        "Authorization": "Bearer ${MCP_TOKEN}"
-      }
+      "headers": {"Authorization": "Bearer ${MCP_TOKEN}"}
     }
   }
 }

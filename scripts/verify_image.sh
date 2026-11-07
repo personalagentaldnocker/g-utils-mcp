@@ -22,7 +22,8 @@ store.put("policy", b"policy_revision: image-smoke")
 app = create_app(Settings(), policies=PolicyStore(store, "policy"), secrets=object(),
                  artifacts=Artifacts(MemoryStore()), clients=object())
 with TestClient(app) as client:
-    assert client.get("/healthz").status_code == 200
+    assert client.get("/health").status_code == 200
+    assert client.get("/ready").status_code == 401
     assert client.post("/mcp").status_code == 401
 print("Non-root runtime, CLI, health, mandatory authentication and image contents verified.")
 '

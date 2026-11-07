@@ -127,6 +127,8 @@ def create_app(
     inner = Starlette(
         lifespan=lifespan,
         routes=[
+            Route("/health", health),
+            Route("/ready", ready),
             Route("/healthz", health),
             Route("/readyz", ready),
             Route("/mcp", MCP(), methods=["POST", "GET", "DELETE"]),
@@ -145,7 +147,12 @@ def create_app(
             try:
                 path = scope["path"]
                 headers = {k.lower(): v for k, v in scope["headers"]}
-                if path not in ("/healthz", "/oauth/google/start", "/oauth/google/callback"):
+                if path not in (
+                    "/health",
+                    "/healthz",
+                    "/oauth/google/start",
+                    "/oauth/google/callback",
+                ):
                     snapshot = await anyio.to_thread.run_sync(policies.current)
                     principal = await anyio.to_thread.run_sync(
                         lambda: authenticate(

@@ -31,6 +31,10 @@ resource "google_cloud_run_v2_service" "runtime" {
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
   deletion_protection = true
+  scaling {
+    min_instance_count = 0
+    max_instance_count = var.max_instances
+  }
   template {
     service_account                  = var.runtime_service_account
     timeout                          = "120s"
@@ -66,7 +70,7 @@ resource "google_cloud_run_v2_service" "runtime" {
         value = jsonencode([var.project_id])
       }
       startup_probe {
-        http_get { path = "/healthz" }
+        http_get { path = "/health" }
         period_seconds    = 3
         failure_threshold = 20
       }
