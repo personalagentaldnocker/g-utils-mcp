@@ -1,18 +1,14 @@
 # Claude Code on the web / cloud sessions
 
 This release uses an explicitly configured Authorization bearer header for MCP;
-it does not implement an OAuth authorization server for MCP clients. Google account
-consent is a separate browser flow. Actual hosted-client header/network support
-must be verified in the target cloud session; a desktop or Python client isn't proof.
+it does not implement an OAuth authorization server for MCP clients. Google account consent is a separate browser flow. Actual hosted-client header network support must be verified in the target cloud session; a desktop or Python client isn't proof.
 
 Store MCP_TOKEN securely in that session's environment. MCP_URL is the deployed
 HTTPS origin. Allow that exact host through the session's network configuration.
 If using a proxy-backed network secret, bind it to that hostname and use the
 supported HTTPS route. It may be a placeholder rather than a raw local credential.
 
-For a Claude Code version that supports HTTP servers and environment expansion,
-use the following non-secret MCP configuration (verify with that version's
-`claude mcp --help` and https://code.claude.com/docs/en/mcp):
+For a Claude Code version that supports HTTP servers and environment expansion, use the following non-secret MCP configuration (verify with that version's `claude mcp --help` and https://code.claude.com/docs/en/mcp):
 
 ```json
 {

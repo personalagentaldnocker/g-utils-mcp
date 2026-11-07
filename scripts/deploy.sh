@@ -6,4 +6,4 @@ terraform -chdir=infrastructure/service plan -out=tfplan
 terraform -chdir=infrastructure/service show tfplan
 terraform -chdir=infrastructure/service apply tfplan
 task_service_url="$(terraform -chdir=infrastructure/service output -raw service_url)"
-curl --fail --silent --show-error "${task_service_url}/healthz"
+curl --fail --silent --show-error "${task_service_url}/health"

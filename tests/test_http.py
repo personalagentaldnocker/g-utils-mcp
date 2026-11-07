@@ -24,7 +24,11 @@ def test_authenticated_http_mcp_and_artifact_transfer(policy_dict, secrets):
     )
     headers = {"Authorization": "Bearer " + TOKEN, "Accept": "application/json, text/event-stream"}
     with TestClient(app) as client:
+        assert client.get("/health").json() == {"status": "ok"}
         assert client.get("/healthz").status_code == 200
+        assert client.get("/ready").status_code == 401
+        assert client.get("/readyz").status_code == 401
+        assert client.get("/ready", headers=headers).json() == {"status": "ready"}
         assert client.post("/mcp").status_code == 401
         init = client.post(
             "/mcp",
@@ -70,4 +74,5 @@ def test_authenticated_http_mcp_and_artifact_transfer(policy_dict, secrets):
         assert client.get("/artifacts/" + ref, headers=upload_headers).content == b"file bytes"
         policy_dict["principals"]["agent"]["enabled"] = False
         store.put("policy", json.dumps(policy_dict).encode(), generation)
+        assert client.get("/ready", headers=headers).status_code == 401
         assert client.get("/artifacts/" + ref, headers=upload_headers).status_code == 401

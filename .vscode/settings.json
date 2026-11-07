@@ -1,0 +1,60 @@
+{
+    "[python]":
+    {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[terraform]":
+    {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[terraform-vars]":
+    {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[html]":
+    {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "debug.allowBreakpointsEverywhere": true,
+    "debug.onTaskErrors": "debugAnyway",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.rulers":
+    [
+        90
+    ],
+    "files.exclude":
+    {
+        "**/*.pyc": true,
+        "**/.DS_Store": true,
+        "**/.git": true,
+        "**/.hg": true,
+        "**/.idea": true,
+        "**/.pylint.d": true,
+        "**/.pytest_cache": true,
+        "**/.svn": true,
+        "**/CVS": true,
+        "**/__pycache__": true
+    },
+    "git.autofetch": true,
+    "html.autoClosingTags": true,
+    "launch":
+    {},
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.terminal.activateEnvironment": false,
+    "python.testing.pytestArgs":
+    [
+        "tests",
+        "debug"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "sql-formatter.uppercase": true,
+    "window.zoomLevel": 0,
+    "workbench.colorTheme": "Darcula Pycharm with Light GUI",
+    "workbench.iconTheme": "material-icon-theme"
+}

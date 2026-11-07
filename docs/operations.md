@@ -14,13 +14,18 @@ Configuration uses environment variables; no implicit .env file is loaded.
 | MAX_RESULT_BYTES | Default 1,000,000 tool-result JSON bytes |
 | ARTIFACT_TTL_SECONDS | Default 1800, maximum 3600 |
 
-/healthz is minimal public liveness. /readyz requires a principal credential and
+/health is minimal public liveness. /ready requires a principal credential and
 checks current policy readability, not all Google accounts. /mcp and /artifacts
 require authentication every request. Session IDs are not credentials. OAuth routes
 use their administrative intent/state checks. Access logs are disabled to keep
 OAuth code/state queries out of application logs. Audit includes only safe IDs,
 method, policy generation, decision, duration and error class, not payloads/tokens.
 Do not enable request-body or verbose Google HTTP logging in production.
+
+Use /health and /ready for Cloud Run. Its frontend reserves some URL paths ending
+in `z`, which can return 404 before reaching the container. The legacy /healthz and
+/readyz aliases remain available inside the application. See
+[Cloud Run reserved URL paths](https://docs.cloud.google.com/run/docs/known-issues).
 
 Artifacts expire at application access time, even before GCS's one-day cleanup.
 No public bucket or presigned URL is issued. Active downloads/reuses recheck source
