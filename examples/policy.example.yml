@@ -1,85 +1,61 @@
-schema_version: 1
-policy_revision: initial-reviewed-001
-default_effect: deny
-owners:
-  owner:
-    display_name: Example owner
+# Policy v2. Anything not listed under allow is denied; deny wins over allow.
+# Tool names are Google method ids with "." replaced by "_", plus helper tools.
+version: 2
+revision: example-001
 principals:
   claude-cloud:
-    owner: owner
-    enabled: true
-    credential_digest_secret_refs:
-    - projects/your-project-id/secrets/mcp-agent-digest/versions/latest
-    allowed_contexts:
-    - private
-oauth_clients:
-  workspace:
-    client_id: REPLACE.apps.googleusercontent.com
-    client_secret_ref: projects/your-project-id/secrets/oauth-workspace-client-secret/versions/latest
+    # sha256 of the bearer token; `scripts/admin.py token new` adds one. Up to 3 for rotation.
+    token_sha256: []
 accounts:
   mailbox:
-    owner: owner
-    enabled: false
-    expected_email: mailbox@example.net
-    google_subject: ''
-    services:
-      gmail:
-        oauth_client: workspace
-        refresh_token_secret_ref: projects/your-project-id/secrets/gmail-main-refresh/versions/latest
-        oauth_scopes:
-        - https://www.googleapis.com/auth/gmail.modify
+    email: mailbox@example.net
+    secret: projects/your-project-id/secrets/gmail-main-refresh/versions/latest
   drive-agent:
-    owner: owner
-    enabled: false
-    expected_email: dedicated@example.net
-    google_subject: ''
-    services:
-      drive:
-        oauth_client: workspace
-        refresh_token_secret_ref: projects/your-project-id/secrets/drive-main-refresh/versions/latest
-        oauth_scopes:
-        - https://www.googleapis.com/auth/drive
-contexts:
-  private:
-    grants:
-      claude-cloud:
-        mailbox:
-          allow:
-          - gmail.users.drafts.create
-          - gmail.users.drafts.get
-          - gmail.users.drafts.list
-          - gmail.users.drafts.update
-          - gmail.users.getProfile
-          - gmail.users.labels.create
-          - gmail.users.labels.delete
-          - gmail.users.labels.get
-          - gmail.users.labels.list
-          - gmail.users.labels.patch
-          - gmail.users.labels.update
-          - gmail.users.messages.attachments.get
-          - gmail.users.messages.get
-          - gmail.users.messages.list
-          - gmail.users.messages.modify
-          - gmail.users.threads.get
-          - gmail.users.threads.list
-          - gmail.users.threads.modify
-          deny:
-          - gmail.users.messages.send
-          - gmail.users.drafts.send
-          - gmail.users.messages.delete
-          - gmail.users.messages.trash
-        drive-agent:
-          allow:
-          - docs.documents.batchUpdate
-          - docs.documents.create
-          - docs.documents.get
-          - drive.files.create
-          - drive.files.export
-          - drive.files.get
-          - drive.files.list
-          - drive.files.update
-          deny:
-          - drive.files.delete
-          - drive.permissions.create
-          - drive.permissions.update
-          - drive.permissions.delete
+    email: dedicated@example.net
+    secret: projects/your-project-id/secrets/drive-main-refresh/versions/latest
+grants:
+  claude-cloud:
+    mailbox:
+      allow:
+      - gmail_attachment_download
+      - gmail_draft_compose
+      - gmail_users_drafts_create
+      - gmail_users_drafts_get
+      - gmail_users_drafts_list
+      - gmail_users_drafts_update
+      - gmail_users_getProfile
+      - gmail_users_labels_create
+      - gmail_users_labels_delete
+      - gmail_users_labels_get
+      - gmail_users_labels_list
+      - gmail_users_labels_patch
+      - gmail_users_labels_update
+      - gmail_users_messages_attachments_get
+      - gmail_users_messages_get
+      - gmail_users_messages_list
+      - gmail_users_messages_modify
+      - gmail_users_threads_get
+      - gmail_users_threads_list
+      - gmail_users_threads_modify
+      deny:
+      - gmail_users_messages_send
+      - gmail_users_drafts_send
+      - gmail_users_messages_delete
+      - gmail_users_messages_trash
+    drive-agent:
+      allow:
+      - docs_documents_batchUpdate
+      - docs_documents_create
+      - docs_documents_get
+      - drive_download
+      - drive_files_create
+      - drive_files_export
+      - drive_files_get
+      - drive_files_list
+      - drive_files_update
+      - drive_upload
+      deny:
+      - drive_files_delete
+      - drive_permissions_create
+      - drive_permissions_update
+      - drive_permissions_delete

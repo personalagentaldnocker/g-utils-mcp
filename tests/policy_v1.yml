@@ -1,0 +1,85 @@
+schema_version: 1
+policy_revision: initial-reviewed-001
+default_effect: deny
+owners:
+  owner:
+    display_name: Example owner
+principals:
+  claude-cloud:
+    owner: owner
+    enabled: true
+    credential_digest_secret_refs:
+    - projects/your-project-id/secrets/mcp-agent-digest/versions/latest
+    allowed_contexts:
+    - private
+oauth_clients:
+  workspace:
+    client_id: REPLACE.apps.googleusercontent.com
+    client_secret_ref: projects/your-project-id/secrets/oauth-workspace-client-secret/versions/latest
+accounts:
+  mailbox:
+    owner: owner
+    enabled: false
+    expected_email: mailbox@example.net
+    google_subject: ''
+    services:
+      gmail:
+        oauth_client: workspace
+        refresh_token_secret_ref: projects/your-project-id/secrets/gmail-main-refresh/versions/latest
+        oauth_scopes:
+        - https://www.googleapis.com/auth/gmail.modify
+  drive-agent:
+    owner: owner
+    enabled: false
+    expected_email: dedicated@example.net
+    google_subject: ''
+    services:
+      drive:
+        oauth_client: workspace
+        refresh_token_secret_ref: projects/your-project-id/secrets/drive-main-refresh/versions/latest
+        oauth_scopes:
+        - https://www.googleapis.com/auth/drive
+contexts:
+  private:
+    grants:
+      claude-cloud:
+        mailbox:
+          allow:
+          - gmail.users.drafts.create
+          - gmail.users.drafts.get
+          - gmail.users.drafts.list
+          - gmail.users.drafts.update
+          - gmail.users.getProfile
+          - gmail.users.labels.create
+          - gmail.users.labels.delete
+          - gmail.users.labels.get
+          - gmail.users.labels.list
+          - gmail.users.labels.patch
+          - gmail.users.labels.update
+          - gmail.users.messages.attachments.get
+          - gmail.users.messages.get
+          - gmail.users.messages.list
+          - gmail.users.messages.modify
+          - gmail.users.threads.get
+          - gmail.users.threads.list
+          - gmail.users.threads.modify
+          deny:
+          - gmail.users.messages.send
+          - gmail.users.drafts.send
+          - gmail.users.messages.delete
+          - gmail.users.messages.trash
+        drive-agent:
+          allow:
+          - docs.documents.batchUpdate
+          - docs.documents.create
+          - docs.documents.get
+          - drive.files.create
+          - drive.files.export
+          - drive.files.get
+          - drive.files.list
+          - drive.files.update
+          deny:
+          - drive.files.delete
+          - drive.permissions.create
+          - drive.permissions.update
+          - drive.permissions.delete

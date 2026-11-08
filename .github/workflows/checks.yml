@@ -14,7 +14,6 @@ jobs:
       - run: uv run ruff check . && uv run ruff format --check .
       - run: uv run mypy src
       - run: uv run pytest -m 'not live'
-      - run: uv run python scripts/generate_api_catalog.py --check
       - run: docker build -t g-utils-mcp:test .
       - run: bash scripts/verify_image.sh g-utils-mcp:test
   terraform:

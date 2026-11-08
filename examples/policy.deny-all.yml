@@ -1,8 +1,5 @@
-schema_version: 1
-policy_revision: initial-deny-all
-default_effect: deny
-owners: {}
+version: 2
+revision: initial-deny-all
 principals: {}
-oauth_clients: {}
 accounts: {}
-contexts: {}
+grants: {}

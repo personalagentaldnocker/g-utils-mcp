@@ -17,10 +17,6 @@ variable "image" {
 }
 variable "policy_uri" { type = string }
 variable "temporary_bucket" { type = string }
-variable "public_base_url" {
-  type    = string
-  default = ""
-}
 variable "max_instances" {
   type    = number
   default = 3
@@ -56,10 +52,6 @@ resource "google_cloud_run_v2_service" "runtime" {
       env {
         name  = "TEMP_BUCKET"
         value = var.temporary_bucket
-      }
-      env {
-        name  = "PUBLIC_BASE_URL"
-        value = var.public_base_url
       }
       env {
         name  = "ALLOWED_SECRET_PROJECTS"
