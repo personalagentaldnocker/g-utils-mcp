@@ -7,13 +7,17 @@ variable "name" {
   type    = string
   default = "g-utils-mcp"
 }
-variable "oauth_client_secrets" {
-  type    = set(string)
-  default = ["oauth-workspace-client-secret"]
-}
+# One secret per Google account; scripts/admin.py connect writes its authorized-user JSON.
+# The runtime may only read these.
 variable "refresh_token_secrets" {
   type    = set(string)
   default = []
+}
+# Policy v1 leftovers. Listed secrets are kept (prevent_destroy) but the runtime cannot read
+# them. To retire them: terraform state rm each one, delete it with gcloud, then set [].
+variable "oauth_client_secrets" {
+  type    = set(string)
+  default = ["oauth-workspace-client-secret"]
 }
 variable "principal_digest_secrets" {
   type    = set(string)
@@ -96,21 +100,15 @@ resource "google_secret_manager_secret" "managed" {
 }
 
 resource "google_secret_manager_secret_iam_member" "reader" {
-  for_each  = local.all_secrets
+  for_each  = var.refresh_token_secrets
   secret_id = google_secret_manager_secret.managed[each.value].id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "token_writer" {
-  for_each  = var.refresh_token_secrets
-  secret_id = google_secret_manager_secret.managed[each.value].id
-  role      = "roles/secretmanager.secretVersionAdder"
-  member    = "serviceAccount:${google_service_account.runtime.email}"
-}
-
 output "runtime_service_account" { value = google_service_account.runtime.email }
-output "policy_uri" { value = "gs://${google_storage_bucket.policy.name}/policies/${var.name}.yml" }
+# Policy v2 lives at a new object so a v1 deployment can be cut over in one service apply.
+output "policy_uri" { value = "gs://${google_storage_bucket.policy.name}/policies/${var.name}-v2.yml" }
 output "temporary_bucket" { value = google_storage_bucket.temporary.name }
 output "image_repository" { value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.runtime.repository_id}/server" }
 output "secret_refs" { value = { for name, secret in google_secret_manager_secret.managed : name => "${secret.id}/versions/latest" } }

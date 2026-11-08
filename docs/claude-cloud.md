@@ -2,7 +2,7 @@
 
 This release uses an explicitly configured Authorization bearer header for MCP;
 it does not implement an OAuth authorization server for MCP clients. Google account
-consent is a separate browser flow. Actual hosted-client header/network support
+consent happens separately, on the operator's laptop (setup.md step 5). Actual hosted-client header/network support
 must be verified in the target cloud session; a desktop or Python client isn't proof.
 
 Store MCP_TOKEN securely in that session's environment. MCP_URL is the deployed
@@ -42,19 +42,21 @@ uv run python scripts/smoke.py
 
 This checks the official SDK's client, not Claude itself. Then invoke
 workspace_capabilities through Claude and confirm account aliases and tools.
-Every Google tool takes account, context and params; these select among grants,
-never authenticate the caller.
+Every Google tool takes `account` and `params`. The account selects among your
+grants; it never authenticates the caller.
 
 Example Gmail search arguments for gmail_users_messages_list:
 
 ```json
-{"account":"mailbox","context":"private","params":{"userId":"me","q":"has:attachment filename:pdf","maxResults":10}}
+{"account":"mailbox","params":{"q":"has:attachment filename:pdf","maxResults":10}}
 ```
 
 Read a message/thread, then use gmail_attachment_download with message_id/part_id
-for inline or external attachments. The result has file_ref and checksum. Use the
-file client to download bytes into Claude's filesystem, or pass that file_ref to a
-draft composer directly. Local paths never refer to the Cloud Run filesystem.
+for inline or external attachments. The result has file_ref and checksum. Use
+`g-utils-mcp download FILE_REF OUT` to get the bytes into Claude's filesystem, or pass
+the file_ref to gmail_draft_compose. `g-utils-mcp upload FILE` goes the other way.
+Local paths never refer to the Cloud Run filesystem. Page tokens are Google's own;
+pass `nextPageToken` back unchanged as `pageToken`.
 
 For an existing draft, gmail_users_drafts_get returns revision, message_id and
 attachment_ref values. Supply expected_revision to gmail_draft_compose, along with
@@ -62,8 +64,8 @@ text/html/to/cc/subject changes, add_file_refs or remove_attachment_refs. For a 
 reply draft supply reply_to_message_id (optional reply_all); the server derives
 thread/reply headers. No send tool exists.
 
-Drive: drive_files_list supports Drive q and fields; drive_download produces an
-artifact, drive_upload consumes one. Google Docs creation uses docs_documents_create;
+Drive: drive_files_list supports Drive q and fields; drive_download produces a
+file_ref, drive_upload consumes one. Google Docs creation uses docs_documents_create;
 read with docs_documents_get including includeTabsContent when needed, then edit
 with docs_documents_batchUpdate and writeControl.requiredRevisionId. Use correct
 tab IDs and UTF-16 indexes. Export a Doc via drive_download (PDF by default).
@@ -75,15 +77,15 @@ Use disposable fixtures, never unsolicited messages or production changes:
 1. Record Claude product/version, MCP config, host allowlist, authentication mode,
    protocol behavior, deployment digest and policy generation.
 2. Check two Google account aliases and two principals with different grants;
-   reject ungranted accounts/methods/context changes.
+   reject ungranted accounts and tools.
 3. Search/read Gmail, create/edit/delete a disposable user label and change thread labels.
 4. Download a PDF, compare its checksum locally, upload bytes, attach it to a reply
    draft, edit text, remove just one attachment and preserve another plus thread headers.
    Confirm the draft remains unsent.
 5. Upload/read/download a disposable Drive file across the dedicated account;
    compare bytes. Create/read/edit/export a Google Doc; verify revision conflict rejection.
-6. Revoke a grant and confirm the tool and its existing artifacts stop working.
-   Restart/reconnect the service and complete another enrollment across instances.
+6. Revoke a grant, publish, and confirm the tool and its existing file_refs stop working
+   on the next request. Reconnect one account with `admin.py connect`.
 7. Record passed/failed/unrun steps and fixture cleanup. Folder restrictions,
    specialized methods and mail sending are outside the acceptance scope.
 

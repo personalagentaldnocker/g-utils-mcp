@@ -1,37 +1,33 @@
-# Terraform, builds and deployment
+# Terraform details
 
-Commands run from the checkout root. Provider Google 7.8.0 and Terraform 1.13.5
-are pinned; commit provider lockfiles. Separate roots avoid bootstrap cycles:
+Terraform 1.13.5 and provider google 7.8.0 are pinned; lockfiles are committed. Three roots:
 
-- bootstrap/: optional private versioned Terraform state bucket.
-- foundation/: APIs, runtime SA, image repository, policy/temp buckets, secret shells
-  and additive IAM. Only designated refresh secrets permit runtime version additions.
-- service/: digest-pinned Cloud Run and public invocation. MCP/files still require
-  application authentication. OAuth uses administrative single-use intents.
+- `bootstrap/`: optional private, versioned state bucket.
+- `foundation/`: APIs, runtime service account, image repository, policy bucket (versioned),
+  temporary bucket (1-day lifecycle) and secret shells.
+  - The runtime gets read-only access to the policy bucket, object access to the temporary
+    bucket, and `secretAccessor` on the account token secrets only.
+  - It cannot write policy, secrets or IAM.
+- `service/`: Cloud Run pinned to an image digest, plus public invocation. Application
+  authentication is still required on every route except `/healthz`.
 
-The public invocation setting allows clients that cannot mint GCP IAM ID tokens.
-If organization policy forbids it, resolve the ingress design before deploying.
-No ordinary MCP credential can administer the project.
+Public invocation is needed because Claude cannot mint Google IAM ID tokens. If your
+organization forbids `allUsers` invokers, resolve that before deploying.
 
-## Resource names
+tfvars files belong to the operator and are Git-ignored. Scripts read them and never
+write them. Always `plan -out`, read the plan, then `apply` that plan;
+`scripts/deploy.sh` asks for confirmation before applying.
 
-GCP resource defaults use `g-utils-mcp` (Cloud Run service, runtime service
-account ID and Artifact Registry repository). The policy/temporary buckets use
-`PROJECT-g-utils-mcp-policy` and `PROJECT-g-utils-mcp-temporary`;
-the state bucket uses `PROJECT-g-utils-mcp-tfstate`. The policy object is
-`policies/g-utils-mcp.yml`, derived from foundation's `name` input.
-Keep foundation/service `name` inputs consistent when overriding them. These
-resource names contain no `google`. Terraform provider identifiers and Google API
-hostnames retain their required names. The Python package is `g_utils_mcp`; the CLI
-command and project name are `g-utils-mcp`.
+## Names
 
-Changing names in an existing installation can require resource replacement and
-policy/state migration. Inspect the plan before applying; existing destruction
-protection remains enabled. This refactor does not rename live resources in place.
+Defaults derive from `name = "g-utils-mcp"`:
+- Cloud Run service, service account and repository: `g-utils-mcp`;
+- buckets: `PROJECT-g-utils-mcp-policy` and `PROJECT-g-utils-mcp-temporary`;
+- policy object: `policies/g-utils-mcp-v2.yml`.
 
-## State
+Keep `name` the same in foundation and service.
 
-Local state is the initial default. Keep it private. For optional remote state:
+## Remote state (optional)
 
 ```bash
 terraform -chdir=infrastructure/bootstrap init
@@ -39,72 +35,51 @@ terraform -chdir=infrastructure/bootstrap apply -var="project_id=$GCP_PROJECT_ID
 export TF_STATE_BUCKET="$(terraform -chdir=infrastructure/bootstrap output -raw state_bucket)"
 ```
 
-Create ignored backend.tf in each foundation/service root with:
-
-```hcl
-terraform {
-  backend "gcs" {}
-}
-```
+Add an ignored `backend.tf` with `terraform { backend "gcs" {} }` to foundation and service,
+then:
 
 ```bash
 terraform -chdir=infrastructure/foundation init -migrate-state -backend-config="bucket=$TF_STATE_BUCKET" -backend-config='prefix=foundation'
 terraform -chdir=infrastructure/service init -migrate-state -backend-config="bucket=$TF_STATE_BUCKET" -backend-config='prefix=service'
 ```
 
-GCS backend locking prevents concurrent writes. Restrict operator access: even
-without token values, state contains infrastructure metadata. Preserve bootstrap
-state locally or migrate it to a third prefix after creation. Don't use temp/policy
-buckets for Terraform state.
-
-## Build/deploy
-
-After foundation and deny-all policy are prepared:
-
-```bash
-bash scripts/build.sh
-# Set this to the final repository@sha256:... line from build.sh:
-export IMAGE_DIGEST='YOUR_REGISTRY_IMAGE@sha256:64_HEX_CHARACTERS'
-uv run python scripts/configure_service.py --image "$IMAGE_DIGEST"
-bash scripts/deploy.sh
-export PUBLIC_BASE_URL="$(terraform -chdir=infrastructure/service output -raw service_url)"
-uv run python scripts/configure_service.py --image "$IMAGE_DIGEST" --public-base-url "$PUBLIC_BASE_URL"
-bash scripts/deploy.sh
-```
-
-configure_service.py reads foundation outputs and writes ignored non-secret service
-terraform.tfvars.json. Use it OR your own service tfvars, not conflicting files.
-Review both plans; the second apply sets the real URL. Then register its Google
-callback and follow authentication.md. No terraform -target is needed.
-
-```bash
-docker build -t g-utils-mcp:local .
-bash scripts/verify_image.sh g-utils-mcp:local
-```
-
-If the Docker builder cannot reach registries but host uv can install, use
-`bash scripts/build-local-offline.sh`. It builds from uv's verified cache without
-disabling integrity/TLS checks. Only runtime dependencies reach the final image.
+State holds no secret values, but keep it private anyway.
 
 ## Imports
 
-Inspect existing identities/locations first and adapt inputs to preserve them.
-Examples, with actual names substituted:
+For an existing project, import what already exists instead of recreating it. For example:
 
 ```bash
 terraform -chdir=infrastructure/foundation import 'google_project_service.required["gmail.googleapis.com"]' "$GCP_PROJECT_ID/gmail.googleapis.com"
 terraform -chdir=infrastructure/foundation import google_service_account.runtime "projects/$GCP_PROJECT_ID/serviceAccounts/g-utils-mcp@$GCP_PROJECT_ID.iam.gserviceaccount.com"
 terraform -chdir=infrastructure/foundation import google_storage_bucket.policy 'ACTUAL_POLICY_BUCKET'
-terraform -chdir=infrastructure/foundation import 'google_secret_manager_secret.managed["oauth-workspace-client-secret"]' "projects/$GCP_PROJECT_ID/secrets/oauth-workspace-client-secret"
+terraform -chdir=infrastructure/foundation import 'google_secret_manager_secret.managed["gmail-main-refresh"]' "projects/$GCP_PROJECT_ID/secrets/gmail-main-refresh"
 terraform -chdir=infrastructure/service import google_cloud_run_v2_service.runtime "projects/$GCP_PROJECT_ID/locations/$GCP_REGION/services/g-utils-mcp"
 ```
 
-Scripts never create secret shells behind Terraform. Add token/digest names to
-foundation sets and apply before writing values. Buckets are private; policy is
-versioned. Temporary data has a one-day lifecycle and no soft-delete retention;
-application expiry is enforced sooner. Policy/secrets prevent_destroy and Run
-deletion protection must be deliberately changed for teardown.
+Buckets and secrets have `prevent_destroy`, and Cloud Run has deletion protection. Teardown
+requires deliberately changing those.
 
-Rollback: retain prior digests and inputs, set the chosen previous digest, inspect
-and apply the service plan, then rerun smoke checks. Roll back policy separately
-with its generation-guarded CLI.
+## Retiring v1 secrets
+
+`oauth_client_secrets` and `principal_digest_secrets` exist only so a v1 installation's
+secrets are not destroyed (which `prevent_destroy` would block anyway). After migrating,
+for each name:
+
+```bash
+terraform -chdir=infrastructure/foundation state rm 'google_secret_manager_secret.managed["NAME"]'
+gcloud secrets delete NAME --project "$GCP_PROJECT_ID"
+```
+
+Then set both variables to `[]` and plan again; the plan should show no changes.
+
+## Image
+
+```bash
+bash scripts/build.sh                      # pushes and prints repository@sha256:…
+docker build -t g-utils-mcp:local . && bash scripts/verify_image.sh g-utils-mcp:local
+```
+
+If Docker cannot reach package registries but host uv can, use
+`bash scripts/build-local-offline.sh`. The image contains only `src/` and runtime
+dependencies, and runs as UID 10001.

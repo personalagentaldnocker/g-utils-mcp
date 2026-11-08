@@ -1,43 +1,54 @@
 # g-utils-mcp
 
-Python HTTP MCP for Gmail, Drive, and Google Docs on Cloud Run.
+A small MCP server on Cloud Run that lets an agent (Claude Code on the web) use Gmail,
+Google Drive and Google Docs, limited by a permission file you control.
 
-**Authenticate agent → read current GCS policy → authorize context/account/method
-and arguments → load that account's OAuth binding from Secret Manager using the
-Cloud Run service account → execute the Google wrapper.** Runtime cannot edit policy.
+```text
+client ──Bearer token──▶ /mcp ─▶ policy: which principal? which account? which tool? (deny wins)
+                                     │  re-read only when the GCS object generation changed
+                                     ▼
+                         Secret Manager: that account's refresh token ─▶ Google API
+```
 
-Multiple Google accounts and multiple agent principals can have different grants.
-Gmail supports search/read, user labels, thread labels, reply drafts, and attachment
-add/remove/download. Drive supports account-wide file search/read/upload/download/
-update/export; Docs supports content edits with revision checks. Binary files move
-through authenticated artifacts, without Base64 through the model context.
+- **Policy** (`gs://…/policies/g-utils-mcp-v2.yml`): maps token digests to principals,
+  and each principal to the accounts and tool names it may use. See [docs/policy.md](docs/policy.md).
+- **Google sign-in** happens on the operator's laptop (`scripts/admin.py connect`). The
+  server never runs an OAuth flow and cannot write policy, secrets or IAM.
+- **Tools** are Google methods named like `gmail_users_messages_list`, plus helpers for
+  draft composition and file transfer. Sending mail and deleting messages are not
+  implemented. See [docs/api-coverage.md](docs/api-coverage.md).
 
-Mail sending/deletion, Drive sharing/deletion, Calendar, Sheets/Slides editing,
-folder restrictions, and specialist/admin API methods are deferred. See the
-[complete API coverage](docs/api-coverage.md) for every exposed/deferred method.
+## Code
+
+| Path | Contents |
+| --- | --- |
+| `src/g_utils_mcp/app.py` | MCP server, tool list and dispatch, HTTP routes, bearer auth |
+| `src/g_utils_mcp/policy.py` | Policy parsing, generation-checked cache, the permission check, argument rules, `run()` (the only path to Google) |
+| `src/g_utils_mcp/gmail.py`, `drive.py` | Tools that need custom code (drafts, attachments, upload/download) |
+| `src/g_utils_mcp/utils.py` | Cloud Storage, Secret Manager, credentials, generic Google method call, logging |
+| `src/g_utils_mcp/cli.py` | `g-utils-mcp serve`, `upload`, `download` |
+| `scripts/admin.py` | Operator commands (policy, tokens, Google sign-in, v1 migration); not in the image |
+| `infrastructure/` | Terraform: optional state bucket, foundation, Cloud Run service |
+
+## Development
 
 ```bash
 uv sync --locked --all-groups
-uv run ruff check .
+uv run ruff check . && uv run ruff format --check .
 uv run mypy src
 uv run pytest -m 'not live'
-uv run python scripts/doctor.py --local
 ```
 
-Offline tests inject in-memory adapters; production has no fake authentication mode.
-For the real configured service: `uv run g-utils-mcp serve`.
+Tests use in-memory fakes for Google, Cloud Storage and Secret Manager; production has no
+fake mode.
 
-Follow these guides in order:
+## Documentation
 
-1. [GCP setup, existing/fresh project](docs/setup-gcp.md)
-2. [Terraform, imports, build and deployment](docs/terraform.md)
-3. [Initial Google authentication and agent credentials](docs/authentication.md)
-4. [GCS permissions file](docs/policy.md)
-5. [Operator commands](docs/cli.md)
-6. [Claude Code cloud and acceptance checks](docs/claude-cloud.md)
-7. [Operations, limits and validation status](docs/operations.md)
+1. [Setup: GCP, Terraform, sign-in, first deploy](docs/setup.md)
+2. [Policy file](docs/policy.md)
+3. [Using it from Claude Code](docs/claude-cloud.md)
+4. [Operations, limits, migration from v1](docs/operations.md)
+5. [Terraform details](docs/terraform.md)
+6. [Tool list](docs/api-coverage.md)
 
-Start with [deny-all](examples/policy.deny-all.yml). The [feature template](examples/policy.example.yml)
-uses fake identifiers and disabled accounts. Replace them locally, enroll, then
-activate. Keep production policies/credentials in ignored `local/` or secure stores.
-The [implementation plan](IMPLEMENTATION_PLAN.md) records the agreed scope.
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) records the design contract and decisions.

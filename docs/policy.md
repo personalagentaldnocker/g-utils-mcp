@@ -1,75 +1,92 @@
-# GCS permissions file
+# Policy file
 
-The GCS file is the authorization source of truth, protected by bucket IAM.
-Runtime reads the current object generation on every HTTP request. It downloads
-that exact generation and parses strictly. Missing/unreadable/invalid policy rejects
-work; there is no indefinite fallback to an older valid policy. One MCP call uses
-one snapshot. Already-running Google requests cannot be recalled by a later edit.
-
-Policy schema: schemas/policy.schema.json. Actual feature example:
-examples/policy.example.yml. This implementation uses a flat canonical method list
-per principal/context/account grant, rather than nesting methods under services as
-in the original planning README. For example:
+One YAML object in the policy bucket decides who may do what. The runtime can only read it.
 
 ```yaml
-contexts:
-  private:
-    grants:
-      claude-cloud:
-        mailbox:
-          allow:
-            - gmail.users.messages.list
-            - gmail.users.messages.get
-            - gmail.users.drafts.get
-            - gmail.users.drafts.update
-          deny:
-            - gmail.users.messages.send
-          constraints:
-            forbidden_added_label_ids: [TRASH, SPAM]
+version: 2
+revision: 2026-11-08-a            # free text, for your own tracking
+principals:
+  claude-cloud:
+    token_sha256: [9f86d0…]       # sha256 hex of each valid bearer token, up to 3
+accounts:
+  mailbox:
+    email: mailbox@example.net
+    secret: projects/P/secrets/gmail-main-refresh/versions/latest
+grants:
+  claude-cloud:
+    mailbox:
+      allow: [gmail_users_messages_list, gmail_users_messages_get]
+      deny:  [gmail_users_messages_send]
 ```
 
-Owners group accounts and agent principals. Principals specify one to three digest
-secret refs and allowed contexts. Accounts bind expected email, verified Google
-subject and gmail/drive credentials. Docs uses the drive binding. OAuth clients
-hold a client ID and secret ref. No values belong in the policy. Valid aliases
-contain letters, numbers, underscore or hyphen (up to 80 chars).
+- **principals**: a client token looks like `claude-cloud.<random>`. The server hashes it and
+  compares the result with that principal's `token_sha256`. A digest can't be turned back
+  into a token, so the policy holds no usable credential. `admin.py token new` creates a
+  token and adds its digest.
+- **accounts**: a Google account alias, its expected email, and the Secret Manager version
+  that holds its authorized-user JSON (written by `admin.py connect`).
+- **grants**: principal → account → tool names. A call is allowed only if the tool is in
+  `allow` and not in `deny`. Deny wins. There are no wildcards, defaults or inheritance.
 
-An enabled principal, allowed context, enabled same-owner account, configured
-service, exact allow, and absence of deny are all required. Deny wins; no wildcards,
-inheritance or context merging. Methods require their own implemented validators.
-The admin CLI rejects grants for deferred methods. Discovery is filtered per
-principal across its contexts; each call rechecks its chosen context and account.
-Capabilities never reveal other principals' accounts or secret references.
+## Rules the parser enforces
 
-YAML duplicate/non-string/merge keys, aliases, anchors, tags, unknown fields and
-bad references are rejected. Secret references must use the deployment's allowed
-projects and are further limited by actual per-secret IAM. Runtime cannot create
-secrets, grant IAM or publish policy. One shared service can access all tokens its
-SA can read; application policy is not hard isolation against malicious server code.
+- Unknown keys, duplicate keys, YAML aliases/anchors/tags and files over 1 MB are rejected.
+- Grants must reference existing principals and accounts.
+- `allow` may only name implemented tools ([api-coverage.md](api-coverage.md)).
+  Implementing a tool never grants it. `deny` may name anything, including tools that
+  don't exist, as a guard against future additions.
+- Secret refs must match `projects/*/secrets/*/versions/*`. At runtime they must also be in
+  `ALLOWED_SECRET_PROJECTS` and readable by the runtime's IAM.
 
-Gmail always uses userId=me. User-label deletion is separate from message deletion;
-TRASH/SPAM additions are blocked by default, including thread modifications.
-Draft editing requires the unchanged revision returned by draft get; removing
-attachments uses revision-bound MIME-part refs, not filenames. Existing body parts,
-recipients, and thread headers are preserved unless explicitly changed. Gmail has
-no atomic draft CAS, leaving a documented race after the final re-read.
+## How changes take effect
 
-Drive's dedicated account has account-wide visibility, including files shared with
-it. Method grants still control edits. Upload/update can change permitted content,
-name, description and MIME metadata; they cannot silently trash/share/transfer
-ownership. Folder ancestry restrictions are deliberately unsupported.
+The server loads the policy at startup and, on every request, reads only the object's
+metadata. When the generation changed, it downloads and validates that exact generation.
+A revocation therefore applies to the next request. If the new generation is invalid or
+unreadable, every request is refused until a valid one is published; there is no fallback
+to the last good policy.
 
-Docs batch edits require writeControl.requiredRevisionId. The policy constraints
-allow only known text/format/table operations. Google validates structural indexes;
-clients must handle UTF-16 positions and tab IDs. Re-read after conflicts; don't
-blindly replay index-based edits. Sheets/Slides content editing isn't exposed.
+```bash
+uv run python scripts/admin.py policy pull local/policy.yml          # current version
+uv run python scripts/admin.py policy validate local/policy.yml
+uv run python scripts/admin.py policy publish local/policy.yml       # diff, confirm, publish
+uv run python scripts/admin.py policy history
+uv run python scripts/admin.py policy pull local/old.yml --generation N   # then publish to roll back
+```
 
-Page tokens are server-owned expiring handles bound to principal, context, account,
-method, query and policy generation. Re-read the first page after policy changes.
-Downloaded artifacts recheck policy and current source access on reuse/download;
-source-method revocation invalidates them even before their TTL expires.
+`publish` writes with `ifGenerationMatch`, so it fails instead of overwriting a newer
+policy.
 
-Policy edits use gcs_policy.py pull/diff/publish. The pull writes a .generation
-sidecar. Publication uses ifGenerationMatch and rejects stale edits. Resolve a
-conflict by pulling to a new file and comparing; never force an old grant over a
-newer one. Rollback revalidates an older generation and publishes it as a new one.
+## Helper tools and their grants
+
+Helpers need their own name **and** the grants of the Google methods they use:
+
+| Helper | Also needs |
+| --- | --- |
+| `gmail_attachment_download` | `gmail_users_messages_get`, plus `gmail_users_messages_attachments_get` for non-inline parts |
+| `gmail_draft_compose` | `gmail_users_drafts_create` or `_update`; `_drafts_get` to edit; `_messages_get` to reply |
+| `drive_upload` | `drive_files_create` or `drive_files_update` |
+| `drive_download` | `drive_files_get`; `drive_files_export` for Google Docs/Sheets/Slides |
+
+`drive_files_export` is a grant name only, not a tool of its own.
+
+## Fixed argument rules (all grants)
+
+- Gmail: `userId` is always `me`. Adding `TRASH`/`SPAM` labels is blocked. Only user labels
+  (`Label_*`) can be edited or deleted.
+- Drafts: `gmail_users_drafts_update` and `gmail_draft_compose` require the unchanged
+  `revision` returned by `gmail_users_drafts_get`.
+- Drive create/update may set only `name`, `description`, `mimeType` (and `parents` on
+  create). Moving, trashing and sharing are not possible.
+- Docs: `documents.create` takes only a title. `batchUpdate` needs
+  `writeControl.requiredRevisionId`, at most 100 requests, and only text, style and table
+  requests.
+- Every call's `params` are validated against Google's discovery schema. Unknown fields
+  are rejected and page sizes are limited to 1–100.
+
+## Files
+
+`gmail_attachment_download`, `gmail_users_messages_attachments_get` and `drive_download`
+return a `file_ref` instead of bytes. The bytes go to the temporary bucket for 30 minutes.
+A `file_ref` works only for the principal that created it. Each time it is used, the tools
+that produced it must still be granted, so revoking a grant also blocks its files.

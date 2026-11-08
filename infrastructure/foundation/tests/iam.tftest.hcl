@@ -11,8 +11,12 @@ run "least_privilege_plan" {
     error_message = "Runtime must have read-only access to the policy bucket."
   }
   assert {
-    condition     = length(google_secret_manager_secret_iam_member.token_writer) == 1 && contains(keys(google_secret_manager_secret_iam_member.token_writer), "test-refresh")
-    error_message = "Only account refresh-token secrets permit new runtime versions."
+    condition     = length(google_secret_manager_secret_iam_member.reader) == 1 && contains(keys(google_secret_manager_secret_iam_member.reader), "test-refresh")
+    error_message = "The runtime may read account token secrets only, not digest or OAuth client secrets."
+  }
+  assert {
+    condition     = alltrue([for m in google_secret_manager_secret_iam_member.reader : m.role == "roles/secretmanager.secretAccessor"])
+    error_message = "The runtime must not add secret versions."
   }
   assert {
     condition     = google_storage_bucket.policy.public_access_prevention == "enforced" && google_storage_bucket.temporary.public_access_prevention == "enforced"

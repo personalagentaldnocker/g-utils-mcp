@@ -96,9 +96,12 @@ def policy_pull(file: Path, generation: Annotated[int | None, typer.Option()] = 
     blob = policy_blob(generation)
     blob.reload()
     data = blob.download_as_bytes()
-    pol.parse(data, KNOWN)
     write_private(file, data)
     typer.echo(f"generation {blob.generation} -> {file}")
+    try:
+        pol.parse(data, KNOWN)
+    except ValueError as exc:  # e.g. a v1 policy pulled for `migrate`
+        typer.echo(f"warning: not a valid v2 policy: {exc}", err=True)
 
 
 @policy_app.command("history")
