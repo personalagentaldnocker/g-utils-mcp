@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.12.*"
 
 [[package]]
@@ -189,20 +189,20 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-api-python-client" },
-    { name = "google-auth-oauthlib" },
     { name = "google-cloud-secret-manager" },
     { name = "google-cloud-storage" },
     { name = "httpx" },
     { name = "jsonschema" },
     { name = "mcp" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "typer" },
     { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
+admin = [
+    { name = "google-auth-oauthlib" },
+]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -215,20 +215,18 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "google-api-python-client", specifier = ">=2.180,<3" },
-    { name = "google-auth-oauthlib", specifier = ">=1.2,<2" },
     { name = "google-cloud-secret-manager", specifier = ">=2.24,<3" },
     { name = "google-cloud-storage", specifier = ">=3.3,<4" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "jsonschema", specifier = ">=4.25,<5" },
     { name = "mcp", specifier = ">=1.26,<2" },
-    { name = "pydantic", specifier = ">=2.11,<3" },
-    { name = "pydantic-settings", specifier = ">=2.10,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "typer", specifier = ">=0.16,<1" },
     { name = "uvicorn", specifier = ">=0.35,<1" },
 ]
 
 [package.metadata.requires-dev]
+admin = [{ name = "google-auth-oauthlib", specifier = ">=1.2,<2" }]
 dev = [
     { name = "mypy", specifier = ">=1.17,<2" },
     { name = "pytest", specifier = ">=8,<10" },

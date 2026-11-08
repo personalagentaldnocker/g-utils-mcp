@@ -1,87 +1,89 @@
+"""The `g-utils-mcp` command: run the server, and move files to and from it.
+
+`upload` and `download` let an MCP client hand file bytes to the server (and get them
+back) without the bytes passing through the model. Administration lives in scripts/admin.py.
+"""
+
 import hashlib
 import json
+import mimetypes
 import os
 from pathlib import Path
-from typing import Annotated
 from urllib.parse import quote
 
 import httpx
 import typer
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
+LIMIT = 25_000_000
 
 
 @app.command()
 def serve(host: str = "0.0.0.0", port: int = 0):
-    """Run the authenticated Cloud Run application."""
+    """Run the MCP server (Cloud Run entry point)."""
     import uvicorn
 
     from .app import create_app
-    from .config import Settings
 
-    settings = Settings()
-    uvicorn.run(create_app(settings), host=host, port=port or settings.port, access_log=False)
+    port = port or int(os.environ.get("PORT", 8080))
+    uvicorn.run(create_app(), host=host, port=port, access_log=False)
 
 
-def headers(context: str) -> dict:
+def _headers() -> dict:
     token = os.environ.get("MCP_TOKEN")
     if not token:
-        raise typer.BadParameter("Set MCP_TOKEN securely in the client environment")
-    return {"Authorization": "Bearer " + token, "X-Workspace-Context": context}
+        raise typer.BadParameter("Set MCP_TOKEN in the environment")
+    return {"Authorization": "Bearer " + token}
 
 
-def base_url() -> str:
+def _url(path: str) -> str:
     url = os.environ.get("MCP_URL", "").rstrip("/")
     if not url.startswith("https://"):
         raise typer.BadParameter("Set MCP_URL to the HTTPS service origin")
-    return url
+    return url + path
 
 
 @app.command()
-def upload(file: Path, context: Annotated[str, typer.Option()]):
-    """Upload binary bytes without placing them in the model context."""
-    import mimetypes
-
-    hdr = headers(context)
-    if file.stat().st_size > 20_000_000:
-        raise typer.BadParameter("File exceeds the default 20 MB transfer limit")
-    hdr["X-Filename"] = quote(file.name)
-    hdr["Content-Type"] = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+def upload(file: Path):
+    """Upload a local file; prints the file_ref to pass to drive_upload or gmail_draft_compose."""
+    if file.stat().st_size > LIMIT:
+        raise typer.BadParameter("File exceeds the transfer limit")
+    headers = {
+        **_headers(),
+        "X-Filename": quote(file.name),
+        "Content-Type": mimetypes.guess_type(file.name)[0] or "application/octet-stream",
+    }
     with file.open("rb") as source, httpx.Client(timeout=120) as client:
-        response = client.post(base_url() + "/artifacts", headers=hdr, content=source)
+        response = client.post(_url("/files"), headers=headers, content=source)
     if response.status_code != 201:
         raise typer.BadParameter(f"Upload failed: HTTP {response.status_code}")
     typer.echo(json.dumps(response.json()))
 
 
 @app.command()
-def download(file_ref: str, output: Path, context: Annotated[str, typer.Option()]):
-    """Download to a new file and verify its checksum; never overwrite a user file."""
-    limit = 25_000_000
-    created = False
+def download(file_ref: str, output: Path):
+    """Download a file_ref to a new local file (never overwrites) and verify its sha256."""
     try:
-        with httpx.stream(
-            "GET", base_url() + "/artifacts/" + file_ref, headers=headers(context), timeout=120
-        ) as response:
-            if response.status_code != 200:
-                raise typer.BadParameter(f"Download failed: HTTP {response.status_code}")
-            digest = hashlib.sha256()
-            size = 0
-            fd = os.open(output, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            created = True
-            with os.fdopen(fd, "wb") as dest:
-                for chunk in response.iter_bytes():
-                    size += len(chunk)
-                    if size > limit:
-                        raise ValueError("Transfer limit exceeded")
-                    digest.update(chunk)
-                    dest.write(chunk)
-            if digest.hexdigest() != response.headers.get("X-Content-SHA256"):
-                raise typer.BadParameter("Checksum mismatch")
+        fd = os.open(output, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError:
         raise typer.BadParameter("Output exists; choose a new filename") from None
-    except Exception:
-        if created:
-            output.unlink(missing_ok=True)
+    try:
+        digest, size = hashlib.sha256(), 0
+        with (
+            os.fdopen(fd, "wb") as dest,
+            httpx.stream("GET", _url("/files/" + file_ref), headers=_headers(), timeout=120) as r,
+        ):
+            if r.status_code != 200:
+                raise typer.BadParameter(f"Download failed: HTTP {r.status_code}")
+            for chunk in r.iter_bytes():
+                size += len(chunk)
+                if size > LIMIT:
+                    raise typer.BadParameter("Transfer limit exceeded")
+                digest.update(chunk)
+                dest.write(chunk)
+        if digest.hexdigest() != r.headers.get("X-Content-SHA256"):
+            raise typer.BadParameter("Checksum mismatch")
+    except BaseException:
+        output.unlink(missing_ok=True)
         raise
     typer.echo(str(output))

@@ -20,7 +20,7 @@ def test_file_client_checksum_and_preserves_existing_output(tmp_path, monkeypatc
     monkeypatch.setattr(httpx, "stream", lambda *args, **kwargs: client.stream(*args, **kwargs))
     output = tmp_path / "download.pdf"
     runner = CliRunner()
-    args = ["download", "reference", str(output), "--context", "private"]
+    args = ["download", "reference", str(output)]
     assert runner.invoke(cli.app, args).exit_code == 0
     assert output.read_bytes() == b"file"
     assert runner.invoke(cli.app, args).exit_code != 0
@@ -38,10 +38,5 @@ def test_file_client_cleans_up_bad_checksum(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(httpx, "stream", lambda *args, **kwargs: client.stream(*args, **kwargs))
     output = tmp_path / "download.pdf"
-    assert (
-        CliRunner()
-        .invoke(cli.app, ["download", "ref", str(output), "--context", "private"])
-        .exit_code
-        != 0
-    )
+    assert CliRunner().invoke(cli.app, ["download", "ref", str(output)]).exit_code != 0
     assert not output.exists()
