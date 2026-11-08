@@ -1,19 +1,22 @@
-"""Cloud Run entry point: /healthz and the authenticated /mcp endpoint."""
+"""Cloud Run entry point: /healthz, and the authenticated /mcp and /files endpoints."""
 
+import hashlib
 import os
 from contextlib import asynccontextmanager
+from urllib.parse import quote, unquote
 
 import anyio
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from . import config
 from .mcp_server import Caller, build_server, caller
 from .utils import auth
-from .utils.helpers import AppError
+from .utils.helpers import AppError, file_load, file_store
 
 
 def load_caller(authorization: str) -> Caller:
@@ -45,6 +48,53 @@ def create_app(load=load_caller):
     async def health(request):
         return JSONResponse({"status": "ok"})
 
+    def error(exc: Exception) -> JSONResponse:
+        if isinstance(exc, AppError):
+            body, status = {"error": exc.code, "message": exc.message}, exc.status
+        else:  # missing settings or Google Cloud unreachable; no details out
+            body, status = {"error": "unavailable"}, 503
+        return JSONResponse(body, status_code=status, headers={"Cache-Control": "no-store"})
+
+    async def file_upload(request: Request):
+        """POST raw bytes (X-Filename, Content-Type headers) -> file_ref for the tools."""
+        try:
+            who = await anyio.to_thread.run_sync(
+                lambda: load(request.headers.get("authorization", ""))
+            )
+            data = bytearray()
+            async for chunk in request.stream():
+                data.extend(chunk)
+                if len(data) > config.MAX_FILE_BYTES:
+                    raise AppError("too_large", "File exceeds the size limit", 413)
+            name = unquote(request.headers.get("x-filename", "file"))
+            mime_type = request.headers.get("content-type", "application/octet-stream")
+            ref = await anyio.to_thread.run_sync(
+                lambda: file_store(who.principal, bytes(data), name, mime_type)
+            )
+        except Exception as exc:
+            return error(exc)
+        digest = hashlib.sha256(data).hexdigest()
+        return JSONResponse({"file_ref": ref, "size": len(data), "sha256": digest}, status_code=201)
+
+    async def file_download(request: Request):
+        """GET the bytes behind a file_ref returned by a tool."""
+        try:
+            who = await anyio.to_thread.run_sync(
+                lambda: load(request.headers.get("authorization", ""))
+            )
+            ref = request.path_params["ref"]
+            data, name, mime_type = await anyio.to_thread.run_sync(
+                lambda: file_load(who.principal, ref)
+            )
+        except Exception as exc:
+            return error(exc)
+        headers = {
+            "Content-Disposition": "attachment; filename*=UTF-8''" + quote(name),
+            "X-Content-SHA256": hashlib.sha256(data).hexdigest(),
+            "Cache-Control": "no-store",
+        }
+        return Response(data, media_type=mime_type, headers=headers)
+
     async def mcp(scope, receive, send):
         headers = {k.lower(): v for k, v in scope["headers"]}
         token = None
@@ -53,15 +103,8 @@ def create_app(load=load_caller):
             who = await anyio.to_thread.run_sync(lambda: load(authorization))
             token = caller.set(who)
             await manager.handle_request(scope, receive, send)
-        except AppError as exc:
-            response = JSONResponse(
-                {"error": exc.code, "message": exc.message},
-                status_code=exc.status,
-                headers={"Cache-Control": "no-store"},
-            )
-            await response(scope, receive, send)
-        except Exception:  # missing settings or Secret Manager unreachable; no details out
-            await JSONResponse({"error": "unavailable"}, status_code=503)(scope, receive, send)
+        except Exception as exc:
+            await error(exc)(scope, receive, send)
         finally:
             if token is not None:
                 caller.reset(token)
@@ -77,6 +120,8 @@ def create_app(load=load_caller):
             Route("/health", health),
             Route("/healthz", health),
             Route("/mcp", ASGI(mcp), methods=["POST", "GET", "DELETE"]),
+            Route("/files", file_upload, methods=["POST"]),
+            Route("/files/{ref}", file_download, methods=["GET"]),
         ],
     )
 

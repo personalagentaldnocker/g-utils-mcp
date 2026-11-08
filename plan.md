@@ -38,7 +38,7 @@ honorable mentions: config.py: whatever should be manifested but shold not go in
 - Policy freshness: every request checks the object's generation (metadata only) and re-downloads only when it changed.
 - One agent (principal) for now; the format allows more.
 - One secret holds everything: OAuth client id/secret, one refresh token per account, the MCP token(s). Runtime reads it, never writes it.
-- Files go through the conversation as base64 (cap 5 MB per file). The temporary bucket and the artifact endpoints are gone. Google page tokens are passed through unchanged.
+- Files up to 5 MB go through the conversation as base64. Larger files (up to 25 MB) go through the temporary bucket: tools return a `file_ref`, the agent uses `GET /files/<ref>` and `POST /files` with its MCP token. Refs are bound to the agent and expire after 1 hour; the bucket deletes after a day. No tokens or credentials in the bucket (Google page tokens are passed through unchanged, no signed URLs).
 - Package stays `src/g_utils_mcp/` (imports and the `g-utils-mcp` command work in the container, on the laptop and in tests).
 - Generic tools come from a method list in gmail.py / drive.py; only drafts with attachments, attachment download and Drive upload/download are hand-written.
 - Tests kept: policy filter, MCP authentication, tool calls against a fake Google client.
@@ -47,5 +47,5 @@ honorable mentions: config.py: whatever should be manifested but shold not go in
 
 ## Status
 - [x] Code refactor (src, tests, admin script)
-- [x] Terraform: single secret, no temporary bucket, image passed to deploy without overwriting tfvars, apply asks first
+- [x] Terraform: single secret, temporary bucket for large files only, image passed to deploy without overwriting tfvars, apply asks first
 - [ ] One-command setup script (next step)

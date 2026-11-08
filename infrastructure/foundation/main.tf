@@ -45,6 +45,33 @@ resource "google_storage_bucket" "policy" {
   depends_on = [google_project_service.required]
 }
 
+# File contents above 5 MB on their way between the agent and Google. Never credentials.
+resource "google_storage_bucket" "temporary" {
+  name                        = "${var.project_id}-${var.name}-temporary"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = true
+  soft_delete_policy { retention_duration_seconds = 0 }
+  lifecycle_rule {
+    condition { age = 1 }
+    action { type = "Delete" }
+  }
+  depends_on = [google_project_service.required]
+}
+
+resource "google_storage_bucket_iam_member" "temporary_writer" {
+  bucket = google_storage_bucket.temporary.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_storage_bucket_iam_member" "temporary_reader" {
+  bucket = google_storage_bucket.temporary.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 resource "google_storage_bucket_iam_member" "policy_reader" {
   bucket = google_storage_bucket.policy.name
   role   = "roles/storage.objectViewer"
@@ -69,5 +96,6 @@ resource "google_secret_manager_secret_iam_member" "runtime_reader" {
 
 output "runtime_service_account" { value = google_service_account.runtime.email }
 output "policy_uri" { value = "gs://${google_storage_bucket.policy.name}/policies/${var.name}.yml" }
+output "temporary_bucket" { value = google_storage_bucket.temporary.name }
 output "image_repository" { value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.runtime.repository_id}/server" }
 output "secret_name" { value = google_secret_manager_secret.runtime.id }

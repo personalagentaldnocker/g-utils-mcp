@@ -29,7 +29,7 @@ uv, Terraform (version in `.terraform-version`). Run everything from the reposit
    terraform -chdir=infrastructure/foundation apply
    ```
    This creates the APIs, the runtime service account, the image registry, the policy
-   bucket and the single secret (empty).
+   bucket, the temporary bucket for large files and the single secret (empty).
 3. **OAuth client (Cloud Console, manual).** Google Auth Platform → Branding and
    Audience: set the app to **In production** (in Testing, sign-ins expire after 7 days;
    for personal use you click past the "unverified app" warning once). Clients → Create
@@ -82,8 +82,25 @@ the allowed and denied Google methods. Deny wins; anything not allowed is denied
 `gmail.users.messages.list` → `gmail_users_messages_list`.
 
 Every tool call passes `context`, `account` and `params` (the Google method's
-parameters). Start with `workspace_capabilities`. Files (attachments, Drive uploads and
-downloads) travel as base64 in the call, up to 5 MB each.
+parameters). Start with `workspace_capabilities`.
+
+## Files
+
+Up to 5 MB, files (attachments, Drive uploads and downloads) travel inline as
+`data_base64`. Up to 25 MB, they go through the temporary bucket:
+
+- **Download:** the tool returns a `file_ref` instead of data.
+  ```bash
+  curl -fsS -H "Authorization: Bearer $MCP_TOKEN" -o out.pdf "$MCP_URL/files/FILE_REF"
+  ```
+- **Upload:** post the file, then pass the returned `file_ref` to `drive_upload` or in
+  `add_files` of `gmail_draft_compose`.
+  ```bash
+  curl -fsS -H "Authorization: Bearer $MCP_TOKEN" -H "X-Filename: report.pdf" -H "Content-Type: application/pdf" --data-binary @report.pdf "$MCP_URL/files"
+  ```
+
+A `file_ref` works only with the token that created it and for one hour; the bucket
+deletes everything after a day. The bucket holds file contents only, never tokens.
 
 ## Tear down
 
@@ -91,7 +108,7 @@ downloads) travel as base64 in the call, up to 5 MB each.
 terraform -chdir=infrastructure/service destroy
 terraform -chdir=infrastructure/foundation destroy
 ```
-This deletes the service, the secret and the policy bucket. Enabled APIs stay on.
+This deletes the service, the secret and both buckets. Enabled APIs stay on.
 
 ## Development
 

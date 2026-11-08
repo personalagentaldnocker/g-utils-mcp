@@ -17,6 +17,7 @@ variable "image" {
 }
 variable "policy_uri" { type = string }
 variable "secret_name" { type = string }
+variable "temporary_bucket" { type = string }
 variable "max_instances" {
   type    = number
   default = 3
@@ -52,6 +53,10 @@ resource "google_cloud_run_v2_service" "runtime" {
       env {
         name  = "SECRET_NAME"
         value = var.secret_name
+      }
+      env {
+        name  = "TEMP_BUCKET"
+        value = var.temporary_bucket
       }
       startup_probe {
         http_get { path = "/health" }

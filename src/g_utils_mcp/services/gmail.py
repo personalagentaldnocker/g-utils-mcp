@@ -11,7 +11,7 @@ from email.parser import BytesParser
 from email.utils import getaddresses
 
 from ..config import MAX_FILE_BYTES
-from ..utils.helpers import AppError, b64decode, file_result
+from ..utils.helpers import AppError, User, file_in, file_out
 
 METHODS = [
     "gmail.users.getProfile",
@@ -121,7 +121,9 @@ def _set_body(msg: EmailMessage, text: str, subtype: str) -> None:
         msg.attach(part)
 
 
-def compose(params: dict, existing: dict | None, reply: dict | None, own_email: str) -> dict:
+def compose(
+    params: dict, existing: dict | None, reply: dict | None, own_email: str, files: list
+) -> dict:
     """Build the Gmail draft body. Editing keeps every MIME part that is not changed."""
     rev = ""
     if existing:
@@ -159,11 +161,15 @@ def compose(params: dict, existing: dict | None, reply: dict | None, own_email: 
             for parent in msg.walk():
                 if parent.is_multipart():
                     parent.set_payload([p for p in parent.get_payload() if p is not targets[ref]])
-    for file in params.get("add_files", []):
-        data = b64decode(file["data_base64"], MAX_FILE_BYTES)
-        maintype, _, subtype = file.get("mime_type", "application/octet-stream").partition("/")
-        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=file["filename"])
-    payload = {"raw": base64.urlsafe_b64encode(msg.as_bytes()).decode()}
+    for data, name, mime_type in files:
+        maintype, _, subtype = mime_type.partition("/")
+        msg.add_attachment(
+            data, maintype=maintype, subtype=subtype or "octet-stream", filename=name
+        )
+    raw = msg.as_bytes()
+    if len(raw) > MAX_FILE_BYTES + 10_000_000:  # Gmail rejects drafts above about 35 MB
+        raise AppError("too_large", "Draft exceeds Gmail's size limit", 413)
+    payload = {"raw": base64.urlsafe_b64encode(raw).decode()}
     if thread:
         payload["threadId"] = thread
     return {"message": payload}
@@ -172,7 +178,7 @@ def compose(params: dict, existing: dict | None, reply: dict | None, own_email: 
 # --- Hand-written tools ---
 
 
-def draft_compose(run, params: dict, own_email: str) -> dict:
+def draft_compose(run, params: dict, user: User) -> dict:
     draft_id = params.get("draft_id")
     existing = get_draft(run, draft_id) if draft_id else None
     reply = None
@@ -181,7 +187,8 @@ def draft_compose(run, params: dict, own_email: str) -> dict:
             "gmail.users.messages.get",
             {"userId": "me", "id": params["reply_to_message_id"], "format": "raw"},
         )
-    body = compose(params, existing, reply, own_email)
+    files = [file_in(user, spec) for spec in params.get("add_files", [])]
+    body = compose(params, existing, reply, user.email, files)
     if not draft_id:
         return run("gmail.users.drafts.create", {"userId": "me", "body": body})
     # Re-read right before writing: Gmail has no atomic compare-and-set for drafts.
@@ -200,7 +207,7 @@ def _find_part(part: dict, part_id: str) -> dict | None:
     return None
 
 
-def attachment_download(run, params: dict, own_email: str) -> dict:
+def attachment_download(run, params: dict, user: User) -> dict:
     message_id = params["message_id"]
     message = run("gmail.users.messages.get", {"userId": "me", "id": message_id, "format": "full"})
     part = _find_part(message.get("payload", {}), params["part_id"])
@@ -214,19 +221,23 @@ def attachment_download(run, params: dict, own_email: str) -> dict:
             "gmail.users.messages.attachments.get",
             {"userId": "me", "messageId": message_id, "id": body["attachmentId"]},
         )
-    data = b64decode(body.get("data", ""), MAX_FILE_BYTES)
+    raw = body.get("data", "")
+    data = base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4))
+    if len(data) > MAX_FILE_BYTES:
+        raise AppError("too_large", "Attachment exceeds the size limit", 413)
     name = part.get("filename") or "attachment"
-    return file_result(data, name, part.get("mimeType", "application/octet-stream"))
+    return file_out(user, data, name, part.get("mimeType", "application/octet-stream"))
 
 
+# A file the agent sends: inline base64 (up to 5 MB) or a file_ref from POST /files.
 FILE = {
     "type": "object",
     "properties": {
         "filename": {"type": "string"},
         "mime_type": {"type": "string"},
         "data_base64": {"type": "string"},
+        "file_ref": {"type": "string"},
     },
-    "required": ["filename", "data_base64"],
     "additionalProperties": False,
 }
 
@@ -257,7 +268,8 @@ TOOLS = {
         draft_compose,
     ),
     "gmail_attachment_download": (
-        "Return one MIME part (inline or attached file) of a message as base64.",
+        "Return one MIME part (inline or attached file) of a message: base64 up to 5 MB, "
+        "otherwise a file_ref to download from GET /files/<ref>.",
         {"message_id": {"type": "string"}, "part_id": {"type": "string"}},
         ["message_id", "part_id"],
         ["gmail.users.messages.get"],

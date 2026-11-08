@@ -1,9 +1,9 @@
-"""Drive and Docs: the generic method list plus upload and download as base64."""
+"""Drive and Docs: the generic method list plus file upload and download."""
 
 import io
 
 from ..config import MAX_FILE_BYTES
-from ..utils.helpers import AppError, b64decode, file_result
+from ..utils.helpers import AppError, User, file_in, file_out
 
 METHODS = [
     "drive.files.list",
@@ -17,26 +17,24 @@ METHODS = [
 INTERNAL = ["drive.files.export"]  # grantable, used by drive_download only
 
 
-def upload(run, params: dict, own_email: str) -> dict:
+def upload(run, params: dict, user: User) -> dict:
     from googleapiclient.http import MediaIoBaseUpload
 
-    data = b64decode(params["data_base64"], MAX_FILE_BYTES)
+    data, name, mime_type = file_in(user, params)
     metadata = params.get("metadata", {})
     media = MediaIoBaseUpload(
-        io.BytesIO(data),
-        mimetype=metadata.get("mimeType", "application/octet-stream"),
-        resumable=False,
+        io.BytesIO(data), mimetype=metadata.get("mimeType", mime_type), resumable=True
     )
     args = {"fields": "id,name,mimeType,version", "supportsAllDrives": True}
     if params.get("file_id"):
         return run(
             "drive.files.update", {**args, "fileId": params["file_id"], "body": metadata}, media
         )
-    body = {"name": "upload", **metadata}
+    body = {"name": name, **metadata}
     return run("drive.files.create", {**args, "body": body}, media)
 
 
-def download(run, params: dict, own_email: str) -> dict:
+def download(run, params: dict, user: User) -> dict:
     file_id, seen = params["file_id"], set[str]()
     while True:  # follow shortcuts to their target
         if file_id in seen or len(seen) >= 8:
@@ -65,14 +63,18 @@ def download(run, params: dict, own_email: str) -> dict:
         data = run("drive.files.get", {"fileId": file_id, "supportsAllDrives": True}, "download")
     if len(data) > MAX_FILE_BYTES:
         raise AppError("too_large", "File exceeds the size limit", 413)
-    return file_result(data, meta["name"], mime)
+    return file_out(user, data, meta["name"], mime)
 
 
 TOOLS = {
     "drive_upload": (
-        "Upload base64 bytes as a new Drive file, or as new content of file_id.",
+        "Upload a file as a new Drive file, or as new content of file_id. Give data_base64 "
+        "(up to 5 MB) or a file_ref from POST /files.",
         {
             "data_base64": {"type": "string"},
+            "file_ref": {"type": "string"},
+            "filename": {"type": "string"},
+            "mime_type": {"type": "string"},
             "file_id": {"type": "string"},
             "metadata": {
                 "type": "object",
@@ -85,12 +87,13 @@ TOOLS = {
                 "additionalProperties": False,
             },
         },
-        ["data_base64"],
+        [],
         ["drive.files.create", "drive.files.update"],
         upload,
     ),
     "drive_download": (
-        "Return a Drive file as base64; Google Docs/Sheets/Slides are exported (PDF by default).",
+        "Return a Drive file (base64 up to 5 MB, otherwise a file_ref for GET /files/<ref>). "
+        "Google Docs/Sheets/Slides are exported, PDF by default.",
         {"file_id": {"type": "string"}, "export_mime_type": {"type": "string"}},
         ["file_id"],
         ["drive.files.get"],

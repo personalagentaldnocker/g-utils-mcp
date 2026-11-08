@@ -14,7 +14,15 @@ from mcp.types import CallToolResult, TextContent, Tool
 from .config import MAX_RESULT_BYTES
 from .services import drive, gmail
 from .utils import auth
-from .utils.helpers import AppError, build_client, call, forbidden, method_schema, validate
+from .utils.helpers import (
+    AppError,
+    User,
+    build_client,
+    call,
+    forbidden,
+    method_schema,
+    validate,
+)
 
 logger = logging.getLogger("g_utils_mcp")
 GENERIC = {m.replace(".", "_"): m for m in gmail.METHODS + drive.METHODS}
@@ -136,7 +144,8 @@ def call_tool(who: Caller, name: str, arguments: dict, clients=None) -> dict:
             Draft7Validator({**schema, "additionalProperties": False}).iter_errors(params), None
         ):
             raise AppError("invalid_input", "Arguments do not match the tool schema", 400)
-        result = function(run, params, who.policy.accounts[account].expected_email)
+        user = User(who.principal, who.policy.accounts[account].expected_email)
+        result = function(run, params, user)
     elif name in GENERIC:
         method_id = GENERIC[name]
         if method_id == "gmail.users.drafts.get":
